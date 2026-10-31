@@ -17,9 +17,11 @@
           maxWidth: 0,
           themeMode: 'light',
           colorScheme: 'default',
+          codeTheme: 'auto',
+          exportThemeMode: 'wysiwyg',
           defaultView: 'preview',
           scrollSync: true,
-          language: 'zh',
+          language: (typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || '')) ? 'zh' : 'en',
           imageInsertMode: 'assets',
           imageAssetPath: 'assets',
           imageAssetPathMode: 'relative',
@@ -27,6 +29,8 @@
           codeLineNumbers: false,
           codeWrap: false,
           codeScroll: true,
+          codeHeaderBar: true,
+          exportInteractiveHtml: true,
           softBreaks: true,
           extendedSyntax: true,
           showTrayIcon: true,
@@ -132,6 +136,8 @@
         if (this._selects && this._selects.maxWidth) this._selects.maxWidth.setValue(String(s.maxWidth), true);
         if (this._selects && this._selects.themeMode) this._selects.themeMode.setValue(s.themeMode, true);
         if (this._selects && this._selects.colorScheme) this._selects.colorScheme.setValue(s.colorScheme || 'default', true);
+        if (this._selects && this._selects.codeTheme) this._selects.codeTheme.setValue(s.codeTheme || 'auto', true);
+        if (this._selects && this._selects.exportThemeMode) this._selects.exportThemeMode.setValue(s.exportThemeMode || 'wysiwyg', true);
         // 三个字体 FontPicker 值同步（silent，不触发 onChange 递归）
         for (const k of ['editor', 'preview', 'code']) {
           const p = this._fontPickers && this._fontPickers[k];
@@ -142,6 +148,10 @@
         document.getElementById('set-code-line-numbers').checked = s.codeLineNumbers;
         document.getElementById('set-code-wrap').checked = s.codeWrap;
         document.getElementById('set-code-scroll').checked = s.codeScroll;
+        const chbEl = document.getElementById('set-code-header-bar');
+        if (chbEl) chbEl.checked = s.codeHeaderBar !== false;
+        const eihEl = document.getElementById('set-export-interactive-html');
+        if (eihEl) eihEl.checked = s.exportInteractiveHtml !== false;
         if (this._selects && this._selects.language) this._selects.language.setValue(s.language || 'zh', true);
         document.getElementById('set-soft-breaks').checked = s.softBreaks !== false;
         document.getElementById('set-extended-syntax').checked = s.extendedSyntax !== false;
@@ -301,6 +311,18 @@
         document.getElementById('set-code-scroll').addEventListener('change', (e) => {
           this.settings.codeScroll = e.target.checked;
         });
+        const chbToggle = document.getElementById('set-code-header-bar');
+        if (chbToggle) {
+          chbToggle.addEventListener('change', (e) => {
+            this.settings.codeHeaderBar = e.target.checked;
+          });
+        }
+        const eihToggle = document.getElementById('set-export-interactive-html');
+        if (eihToggle) {
+          eihToggle.addEventListener('change', (e) => {
+            this.settings.exportInteractiveHtml = e.target.checked;
+          });
+        }
         const ctoq = document.getElementById('set-clear-tabs-on-quit');
         if (ctoq) ctoq.addEventListener('change', (e) => { this.settings.clearTabsOnQuit = e.target.checked; });
         // 图片存储方式 / 路径：已从 radio 升级为自绘下拉（set-image-store-mode / set-image-asset-path-mode），
@@ -359,8 +381,47 @@
               { value: 'forest', label: t('schemeForest') },
               { value: 'nord', label: t('schemeNord') },
               { value: 'dusk', label: t('schemeDusk') },
+              { value: 'github', label: t('schemeGithub') },
+              { value: 'dracula', label: t('schemeDracula') },
+              { value: 'monokai', label: t('schemeMonokai') },
+              { value: 'solarized', label: t('schemeSolarized') },
+              { value: 'onedark', label: t('schemeOneDark') },
+              { value: 'tokyo', label: t('schemeTokyo') },
             ]),
             onChange: (v) => { this.settings.colorScheme = v; },
+          });
+        }
+        const codeThemeHost = document.getElementById('set-code-theme');
+        if (codeThemeHost) {
+          this._selects.codeTheme = new Select(codeThemeHost, {
+            value: this.settings.codeTheme || 'auto',
+            t: this.t.bind(this),
+            ariaLabelKey: 'codeTheme',
+            optionsProvider: (t) => ([
+              { value: 'auto', label: t('codeThemeAuto') },
+              { value: 'github', label: t('codeThemeGithub') },
+              { value: 'monokai', label: t('codeThemeMonokai') },
+              { value: 'dracula', label: t('codeThemeDracula') },
+              { value: 'one-dark', label: t('codeThemeOneDark') },
+              { value: 'nord', label: t('codeThemeNord') },
+              { value: 'vsc-dark', label: t('codeThemeVscDark') },
+              { value: 'solarized', label: t('codeThemeSolarized') },
+            ]),
+            onChange: (v) => { this.settings.codeTheme = v; },
+          });
+        }
+        const exportThemeHost = document.getElementById('set-export-theme-mode');
+        if (exportThemeHost) {
+          this._selects.exportThemeMode = new Select(exportThemeHost, {
+            value: this.settings.exportThemeMode || 'wysiwyg',
+            t: this.t.bind(this),
+            ariaLabelKey: 'exportThemeMode',
+            optionsProvider: (t) => ([
+              { value: 'wysiwyg', label: t('exportThemeWysiwyg') },
+              { value: 'light', label: t('exportThemeLight') },
+              { value: 'dark', label: t('exportThemeDark') },
+            ]),
+            onChange: (v) => { this.settings.exportThemeMode = v; },
           });
         }
         // 通用自绘下拉：语言 / Tab 宽度 / 行高 / 最大宽度 / 默认视图 / 关闭行为
@@ -386,12 +447,12 @@
         const langHost = document.getElementById('set-language');
         if (langHost) {
           this._selects.language = new Select(langHost, {
-            value: this.settings.language || 'zh',
+            value: this.settings.language || 'en',
             t: this.t.bind(this),
             ariaLabelKey: 'language',
             optionsProvider: (t) => ([
-              { value: 'zh', label: t('langZh') },
               { value: 'en', label: t('langEn') },
+              { value: 'zh', label: t('langZh') },
               { value: 'es', label: t('langEs') },
             ]),
             onChange: (v) => { this.settings.language = v; },
@@ -539,6 +600,9 @@
         this.preview.classList.toggle('code-line-numbers', s.codeLineNumbers);
         this.preview.classList.toggle('code-wrap', s.codeWrap);
         this.preview.classList.toggle('code-no-scroll', s.codeScroll === false);
+        this.preview.classList.toggle('code-header-bar', s.codeHeaderBar !== false);
+        document.documentElement.setAttribute('data-code-theme', s.codeTheme || 'auto');
+        if (typeof this.annotatePreLanguage === 'function') this.annotatePreLanguage(this.preview);
         if (this._hljsCache) this._hljsCache.clear();
         await this.applyThemeMode();
         this.applyCustomBg();

@@ -115,9 +115,10 @@ function fsApplyFilter() {
 function fsRenderList() {
   if (!__fs_listEl) return;
   if (!__fs_filteredFiles.length) {
-    const msg = (__fs_inputEl && __fs_inputEl.value.trim())
-      ? '未找到匹配的文件'
-      : '当前工作区没有 .md / .markdown / .txt 文件';
+    const ed = window.editor;
+    const noMatch = (ed && typeof ed.t === 'function') ? ed.t('fileSearchNoMatch') : 'No matching files found';
+    const emptyWs = (ed && typeof ed.t === 'function') ? ed.t('fileSearchEmptyWorkspace') : 'No .md / .markdown / .txt files in current workspace';
+    const msg = (__fs_inputEl && __fs_inputEl.value.trim()) ? noMatch : emptyWs;
     __fs_listEl.innerHTML = `<div class="file-search-empty">${msg}</div>`;
     return;
   }
@@ -163,7 +164,8 @@ async function fsScanWorkspace(dir) {
   const token = ++__fs_scanToken;     // 新扫描代次：打断任何进行中的旧扫描
   __fs_allFiles = [];
   __fs_filteredFiles = [];
-  if (__fs_listEl) __fs_listEl.innerHTML = '<div class="file-search-empty">正在扫描文件…</div>';
+  const scanMsg = (window.editor && typeof window.editor.t === 'function') ? window.editor.t('fileSearchScanning') : 'Scanning workspace files…';
+  if (__fs_listEl) __fs_listEl.innerHTML = `<div class="file-search-empty">${scanMsg}</div>`;
 
   // 命令缺失（极旧构建）时回退到前端递归扫描，保证不整体失效。
   if (typeof TauriApi === 'undefined' || typeof TauriApi.searchFiles !== 'function') {

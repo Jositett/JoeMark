@@ -1,4 +1,4 @@
-// 代码块后处理：语法高亮（highlight.js）+ 行号包裹 + 缓存。
+// 代码块后处理：语法高亮（highlight.js）+ 行号包裹 + 语言标签属性 + 缓存。
 // 从 app.js 的 renderPreview 中抽取，独立后可单独测试、降低改动爆炸半径。
 //
 // 设计：纯函数式，依赖通过参数注入，不隐式读取全局 this。
@@ -15,14 +15,49 @@
 //      这避免 highlight.js 的跨行 <span>（如 gherkin 对 |...| 的字符串包裹）被 block.innerHTML.split('\n')
 //      在标签中间切断，导致预览代码块 HTML 结构破碎、换行错乱。
 
+const LANG_DISPLAY_NAMES = {
+  js: 'JavaScript', javascript: 'JavaScript', ts: 'TypeScript', typescript: 'TypeScript',
+  jsx: 'JSX', tsx: 'TSX', py: 'Python', python: 'Python', rb: 'Ruby', ruby: 'Ruby',
+  rs: 'Rust', rust: 'Rust', go: 'Go', golang: 'Go', java: 'Java', kt: 'Kotlin', kotlin: 'Kotlin',
+  c: 'C', cpp: 'C++', 'c++': 'C++', cs: 'C#', csharp: 'C#', swift: 'Swift', php: 'PHP',
+  sh: 'Shell', bash: 'Bash', zsh: 'Zsh', powershell: 'PowerShell', ps1: 'PowerShell',
+  cmd: 'Batch', bat: 'Batch', sql: 'SQL', html: 'HTML', xml: 'XML', css: 'CSS', scss: 'SCSS',
+  less: 'Less', json: 'JSON', yaml: 'YAML', yml: 'YAML', toml: 'TOML', ini: 'INI',
+  md: 'Markdown', markdown: 'Markdown', dockerfile: 'Dockerfile', docker: 'Docker',
+  makefile: 'Makefile', cmake: 'CMake', graphql: 'GraphQL', proto: 'Protobuf',
+  lua: 'Lua', r: 'R', dart: 'Dart', scala: 'Scala', elixir: 'Elixir', erlang: 'Erlang',
+  haskell: 'Haskell', clojure: 'Clojure', vim: 'Vim', diff: 'Diff', plaintext: 'Text', text: 'Text', txt: 'Text',
+};
+
+function formatLangLabel(raw) {
+  if (!raw) return '';
+  const clean = String(raw).trim();
+  const lower = clean.toLowerCase();
+  return LANG_DISPLAY_NAMES[lower] || clean.toUpperCase();
+}
+
+function extractExplicitLanguage(block) {
+  const cls = (block && block.className) || '';
+  const m = cls.match(/language-([a-zA-Z0-9_+-]+)/);
+  return m ? m[1] : null;
+}
+
+function annotatePreLanguage(block) {
+  const pre = block && block.parentElement;
+  if (!pre || pre.tagName !== 'PRE') return;
+  const explicit = extractExplicitLanguage(block);
+  if (explicit && !/^(math|mermaid|katex)$/i.test(explicit)) {
+    pre.setAttribute('data-lang', formatLangLabel(explicit));
+  }
+}
+
 function escapeHTML(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
 }
 
 function detectLanguage(hljs, block) {
-  const cls = block.className || '';
-  const m = cls.match(/language-([a-zA-Z0-9_-]+)/);
-  if (m) return m[1];
+  const explicit = extractExplicitLanguage(block);
+  if (explicit) return explicit;
   try {
     const auto = hljs.highlightAuto(block.textContent);
     return auto.language || null;
@@ -65,7 +100,7 @@ function buildCodeScrollNoHljs(lines) {
 }
 
 function processCodeBlocks(preview, opts) {
-  const { hljs, cache, lineNumbers } = opts;
+  const { hljs, cache, lineNumbers } = opts || {};
   const lineNumOn = !!lineNumbers;
 
   if (typeof hljs !== 'undefined' && hljs) {
@@ -73,6 +108,7 @@ function processCodeBlocks(preview, opts) {
       preview.querySelectorAll('pre code').forEach((block) => {
         const cls = block.className || '';
         if (/language-(math|mermaid|katex)/.test(cls)) return;
+        annotatePreLanguage(block);
         // 已包裹过（上一次渲染的结果）直接跳过，避免对已包 code-line 的内容重复切分/高亮
         if (block.querySelector('.code-scroll')) return;
         // 缓存键纳入行号状态：开/关行号不共用可能不匹配 display 规则的缓存
@@ -112,6 +148,9 @@ function processCodeBlocks(preview, opts) {
     // 代码块行号（拆分代码行，CSS 控制行号显隐和换行）
     try {
       preview.querySelectorAll('pre code').forEach((block) => {
+        const cls = block.className || '';
+        if (/language-(math|mermaid|katex)/.test(cls)) return;
+        annotatePreLanguage(block);
         if (block.querySelector('.code-scroll')) return;
         const lines = block.textContent.split('\n');
         block.innerHTML = buildCodeScrollNoHljs(lines);
@@ -124,9 +163,9 @@ function processCodeBlocks(preview, opts) {
 
 // 浏览器：作为独立 <script> 加载，挂到全局 CodeBlock（与 unified-renderer.js 的 UnifiedRenderer 一致）
 if (typeof window !== 'undefined' && typeof module === 'undefined') {
-  window.CodeBlock = { processCodeBlocks };
+  window.CodeBlock = { processCodeBlocks, formatLangLabel };
 }
 // Node（测试 / 构建）：CommonJS 导出
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { processCodeBlocks };
+  module.exports = { processCodeBlocks, formatLangLabel };
 }

@@ -11,6 +11,68 @@
       // 关键字含中/英/拼音以便过滤。2026-10-22 全量比对补齐（渲染器支持而面板遗漏的
       // 内容类型，见 SLASH_NEW_ACTIONS；上标/下标动作早已实现、一并恢复进面板）——
       // 新项默认隐藏（DEFAULT_SLASH_HIDDEN），在设置「快捷插入排序」里按需开启。
+      _slashCommandI18nMap() {
+        return {
+          'insert-h1': { en: 'Heading 1', es: 'Encabezado 1' },
+          'insert-h2': { en: 'Heading 2', es: 'Encabezado 2' },
+          'insert-h3': { en: 'Heading 3', es: 'Encabezado 3' },
+          'insert-ul': { en: 'Bulleted List', es: 'Lista con viñetas' },
+          'insert-ol': { en: 'Numbered List', es: 'Lista numerada' },
+          'insert-task': { en: 'Task List', es: 'Lista de tareas' },
+          'insert-quote': { en: 'Blockquote', es: 'Cita' },
+          'insert-code-block': { en: 'Code Block', es: 'Bloque de código' },
+          'insert-table': { en: 'Table', es: 'Tabla' },
+          'insert-link': { en: 'Link', es: 'Enlace' },
+          'insert-image': { en: 'Image', es: 'Imagen' },
+          'insert-bold': { en: 'Bold', es: 'Negrita' },
+          'insert-italic': { en: 'Italic', es: 'Cursiva' },
+          'insert-inline-code': { en: 'Inline Code', es: 'Código en línea' },
+          'insert-hr': { en: 'Horizontal Rule', es: 'Línea horizontal' },
+          'insert-toc': { en: 'Table of Contents [TOC]', es: 'Tabla de contenidos [TOC]' },
+          'insert-math-block': { en: 'Math Formula', es: 'Fórmula matemática' },
+          'insert-mermaid': { en: 'Mermaid Diagram', es: 'Diagrama Mermaid' },
+          'insert-callout-note': { en: 'Note Callout', es: 'Nota [!NOTE]' },
+          'insert-callout-tip': { en: 'Tip Callout', es: 'Consejo [!TIP]' },
+          'insert-callout-warning': { en: 'Warning Callout', es: 'Advertencia [!WARNING]' },
+          'insert-callout-important': { en: 'Important Callout', es: 'Importante [!IMPORTANT]' },
+          'insert-callout-caution': { en: 'Caution Callout', es: 'Atención [!CAUTION]' },
+          'insert-strikethrough': { en: 'Strikethrough', es: 'Tachado' },
+          'insert-highlight': { en: 'Highlight', es: 'Resaltado' },
+          'insert-h4': { en: 'Heading 4', es: 'Encabezado 4' },
+          'insert-h5': { en: 'Heading 5', es: 'Encabezado 5' },
+          'insert-h6': { en: 'Heading 6', es: 'Encabezado 6' },
+          'insert-dl': { en: 'Definition List', es: 'Lista de definiciones', hintEn: 'Term : Definition', hintEs: 'Término : Definición' },
+          'insert-details': { en: 'Collapsible Details', es: 'Bloque desplegable' },
+          'insert-footnote': { en: 'Footnote', es: 'Nota al pie' },
+          'insert-progress': { en: 'Progress Bar', es: 'Barra de progreso' },
+          'insert-center': { en: 'Centered Block', es: 'Bloque centrado' },
+          'insert-u': { en: 'Underline', es: 'Subrayado' },
+          'insert-ins': { en: 'Inserted Text', es: 'Texto insertado' },
+          'insert-del': { en: 'Deleted Text', es: 'Texto eliminado' },
+          'insert-figure': { en: 'Figure with Caption', es: 'Figura con leyenda' },
+          'insert-kbd': { en: 'Keyboard Key', es: 'Tecla de teclado' },
+          'insert-abbreviation': { en: 'Abbreviation', es: 'Abreviatura' },
+          'insert-ruby': { en: 'Ruby Annotation', es: 'Anotación Ruby' },
+          'insert-superscript': { en: 'Superscript', es: 'Superíndice' },
+          'insert-subscript': { en: 'Subscript', es: 'Subíndice' },
+        };
+      },
+      _slashLocalizedLabel(cmd) {
+        if (!cmd) return '';
+        const lang = (this.settings && this.settings.language) || 'zh';
+        if (lang === 'zh') return cmd.label;
+        const map = this._slashCommandI18nMap()[cmd.action];
+        return (map && map[lang]) || (map && map.en) || cmd.label;
+      },
+      _slashLocalizedHint(cmd) {
+        if (!cmd || !cmd.hint) return '';
+        const lang = (this.settings && this.settings.language) || 'zh';
+        if (lang === 'zh') return cmd.hint;
+        const map = this._slashCommandI18nMap()[cmd.action];
+        if (lang === 'es' && map && map.hintEs) return map.hintEs;
+        if (map && map.hintEn) return map.hintEn;
+        return cmd.hint;
+      },
       _buildSlashCommands() {
         if (this._slashCommands) return this._slashCommands;
         const base = [
@@ -127,6 +189,8 @@
           ? cmds
           : cmds.filter((c) => {
               if (c.label.toLowerCase().includes(q)) return true;
+              const locLabel = this._slashLocalizedLabel(c).toLowerCase();
+              if (locLabel.includes(q)) return true;
               return c.keywords.some((k) => k.toLowerCase().includes(q));
             });
         this._slashFiltered = filtered;
@@ -148,13 +212,13 @@
   
           const label = document.createElement('span');
           label.className = 'slash-label';
-          label.textContent = c.label;
+          label.textContent = this._slashLocalizedLabel(c);
           item.appendChild(label);
   
           if (c.hint) {
             const hintEl = document.createElement('span');
             hintEl.className = 'slash-hint';
-            hintEl.textContent = c.hint;
+            hintEl.textContent = this._slashLocalizedHint(c);
             item.appendChild(hintEl);
           }
   
@@ -180,7 +244,7 @@
         const manageBtn = document.createElement('button');
         manageBtn.type = 'button';
         manageBtn.className = 'slash-manage-btn';
-        manageBtn.textContent = '管理命令排序';
+        manageBtn.textContent = (typeof this.t === 'function' ? this.t('slashManageBtn') : '') || 'Manage Quick Insert Order';
         manageBtn.addEventListener('mousedown', (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
@@ -340,11 +404,11 @@
   
           const label = document.createElement('span');
           label.className = 'slash-order-label';
-          label.textContent = cmd.label;
+          label.textContent = this._slashLocalizedLabel(cmd);
   
           const hint = document.createElement('span');
           hint.className = 'slash-order-hint';
-          hint.textContent = cmd.hint || '';
+          hint.textContent = this._slashLocalizedHint(cmd) || '';
   
           // 显隐开关：复用现有 .toggle / .toggle-slider
           const toggle = document.createElement('label');

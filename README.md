@@ -1,3 +1,11 @@
+> ### 🚀 JoeMark (by Josiah "Joedroid" Tetteh · [@Jositett](https://github.com/Jositett/JoeMark))
+> **JoeMark** is a developer-focused remix of **[TizuMark](https://github.com/tizuio/TizuMark-Markdown-Editor)** tailored for authoring and exporting technical code guides:
+> - **True WYSIWYG Dark/Light HTML & PDF Export** with full theme palette & code wrapping fidelity
+> - **6 Developer Color Schemes & 8 Code Syntax Palettes** (GitHub, Dracula, Monokai, Solarized, One Dark Pro, Nord, VS Code Dark+, Tokyo Night)
+> - **Interactive HTML Technical Guide Toolbar** (floating TOC drawer, Dark/Light toggle, Wrap Lines toggle, Copy Code, Top) & Code Language Header Bars
+> - **Markdown Monster–Style Heading Filenames** for untitled files & **Direct English Default UI**
+> - **License & Attribution**: Released under **GPL v3**. Based on the original open-source project **[TizuMark](https://github.com/tizuio/TizuMark-Markdown-Editor)** (`Copyright (c) 2024-2026 TizuMark`).
+
 # TizuMark
 
 **TizuMark** is a lightweight, open-source **Markdown editor** for Windows with WYSIWYG live preview, outline navigation, KaTeX & Mermaid support — a free **Typora alternative** built with Tauri + Rust.

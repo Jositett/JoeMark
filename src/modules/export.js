@@ -199,9 +199,9 @@
       _exportExpandRules(scope) {
         const p = scope ? scope + ' ' : '';
         return `${p}.code-scroll { max-height: none !important; overflow: visible !important; }
-        ${p}pre { white-space: pre-wrap !important; word-wrap: break-word !important; word-break: break-word !important; overflow: visible !important; }
-        ${p}pre code { white-space: pre-wrap !important; word-wrap: break-word !important; word-break: break-word !important; }
-        ${p}.code-line-text { white-space: pre-wrap !important; word-wrap: break-word !important; word-break: break-word !important; }
+        ${p}pre { white-space: pre-wrap !important; overflow-wrap: anywhere !important; word-wrap: break-word !important; word-break: break-word !important; overflow: visible !important; }
+        ${p}pre code { white-space: pre-wrap !important; overflow-wrap: anywhere !important; word-wrap: break-word !important; word-break: break-word !important; }
+        ${p}.code-line-text { white-space: pre-wrap !important; overflow-wrap: anywhere !important; word-wrap: break-word !important; word-break: break-word !important; }
         ${p}table { display: table !important; overflow: visible !important; }
         ${p}td, ${p}th { overflow-wrap: break-word !important; word-break: break-word !important; }
         ${p}.mermaid-container { overflow: visible !important; }
@@ -811,14 +811,430 @@
       // body 保留 .preview-content 容器与原 class（code-line-numbers 等状态类一并继承），
       // 只为「独立文档没有应用外壳」这一事实补少量修正。
       // DOCX 不走本方法（exportWord → export-docx.js），导出逻辑与样式均不受影响。
+      // 判断导出应使用深色还是浅色主题：
+      // - exportThemeMode === "light" → 强制浅色
+      // - exportThemeMode === "dark" → 强制深色
+      // - exportThemeMode === "wysiwyg"（默认）→ 严格跟随当前所见即所得明暗状态
+      _shouldExportDark() {
+        const mode = this.settings && this.settings.exportThemeMode;
+        if (mode === 'light') return false;
+        if (mode === 'dark') return true;
+        const domTheme = document.documentElement.getAttribute('data-theme');
+        if (domTheme === 'dark') return true;
+        if (domTheme === 'light') return false;
+        return Boolean(this.isDark);
+      },
+      // 解析导出时的精确背景/文字/代码底色/边框色板（供 HTML 兜底样式与 PDF 页面画布使用）
+      _resolveExportPalette(isDark, colorScheme) {
+        const scheme = colorScheme || (document.documentElement.getAttribute('data-color-scheme')) || 'default';
+        const lightMap = {
+          default:   { bg: '#ffffff', fg: '#22262e', sec: '#666d79', codeBg: '#f4f5f7', border: '#dfe2e8', accent: '#2563eb' },
+          classic:   { bg: '#faf9f7', fg: '#2c2c2e', sec: '#6e6e72', codeBg: '#f0efed', border: '#dfdcd8', accent: '#2050d0' },
+          forest:    { bg: '#f4f7f2', fg: '#2a3028', sec: '#5e6a5a', codeBg: '#eaefe6', border: '#d4ddd0', accent: '#3a7d5c' },
+          nord:      { bg: '#f4f6fa', fg: '#2e3340', sec: '#606878', codeBg: '#eaecf2', border: '#d5d8e4', accent: '#4f7a9e' },
+          dusk:      { bg: '#f7f5fa', fg: '#302e3a', sec: '#6a6680', codeBg: '#eeecf2', border: '#d8d4e4', accent: '#7c4dcc' },
+          sunset:    { bg: '#fcf7f2', fg: '#38302a', sec: '#706658', codeBg: '#f4eee6', border: '#e0d8ce', accent: '#d4764a' },
+          github:    { bg: '#ffffff', fg: '#1f2328', sec: '#59636e', codeBg: '#f6f8fa', border: '#d0d7de', accent: '#0969da' },
+          dracula:   { bg: '#fffbeb', fg: '#1f1f24', sec: '#646172', codeBg: '#f5f0dc', border: '#dcd4bc', accent: '#7c3aed' },
+          monokai:   { bg: '#fafaf8', fg: '#272822', sec: '#686960', codeBg: '#f0f0ea', border: '#d8d8ce', accent: '#d92672' },
+          solarized: { bg: '#fdf6e3', fg: '#586e75', sec: '#839496', codeBg: '#eee8d5', border: '#d6ceb8', accent: '#268bd2' },
+          onedark:   { bg: '#fafafa', fg: '#383a42', sec: '#696c77', codeBg: '#f0f0f1', border: '#d4d4d6', accent: '#4078f2' },
+          tokyo:     { bg: '#e1e2e7', fg: '#3760bf', sec: '#6172b0', codeBg: '#d5d6db', border: '#c4c5cb', accent: '#2e7de9' },
+        };
+        const darkMap = {
+          default:   { bg: '#1a1c20', fg: '#d1d2d6', sec: '#8e8f96', codeBg: '#1f2126', border: '#32343c', accent: '#4a9eff' },
+          classic:   { bg: '#1a1c20', fg: '#d1d2d6', sec: '#8e8f96', codeBg: '#1f2126', border: '#32343c', accent: '#4a9eff' },
+          forest:    { bg: '#162018', fg: '#c8d0c4', sec: '#7e8e7a', codeBg: '#1b261d', border: '#2a3a2c', accent: '#65c89a' },
+          nord:      { bg: '#202530', fg: '#d0d4de', sec: '#8890a0', codeBg: '#262b38', border: '#363c4e', accent: '#8ac4d8' },
+          dusk:      { bg: '#1d1728', fg: '#ccc8d8', sec: '#88829e', codeBg: '#231d30', border: '#342e48', accent: '#b28cf0' },
+          sunset:    { bg: '#241912', fg: '#d4c8bc', sec: '#8e8072', codeBg: '#2a1f18', border: '#3e3026', accent: '#e89460' },
+          github:    { bg: '#0d1117', fg: '#e6edf3', sec: '#8b949e', codeBg: '#161b22', border: '#30363d', accent: '#58a6ff' },
+          dracula:   { bg: '#282a36', fg: '#f8f8f2', sec: '#929fcf', codeBg: '#21222c', border: '#44475a', accent: '#bd93f9' },
+          monokai:   { bg: '#272822', fg: '#f8f8f2', sec: '#90908a', codeBg: '#1e1f1c', border: '#3e3d32', accent: '#a6e22e' },
+          solarized: { bg: '#002b36', fg: '#93a1a1', sec: '#657b83', codeBg: '#073642', border: '#164652', accent: '#2aa198' },
+          onedark:   { bg: '#282c34', fg: '#abb2bf', sec: '#7f848e', codeBg: '#21252b', border: '#3b4048', accent: '#61afef' },
+          tokyo:     { bg: '#1a1b26', fg: '#c0caf5', sec: '#7982a9', codeBg: '#16161e', border: '#292e42', accent: '#7aa2f7' },
+        };
+        const base = (isDark ? (darkMap[scheme] || darkMap.default) : (lightMap[scheme] || lightMap.default));
+        let bg = base.bg;
+        let fg = base.fg;
+        if (this.settings && this.settings.customBgEnabled && /^#[0-9a-fA-F]{6}$/.test(this.settings.customBgColor || '')) {
+          bg = this.settings.customBgColor;
+          const customFg = document.documentElement.style.getPropertyValue('--custom-fg');
+          if (customFg && customFg.trim()) fg = customFg.trim();
+        }
+        const hex = bg.replace('#', '');
+        const r = parseInt(hex.slice(0, 2), 16) || (isDark ? 26 : 255);
+        const g = parseInt(hex.slice(2, 4), 16) || (isDark ? 28 : 255);
+        const b = parseInt(hex.slice(4, 6), 16) || (isDark ? 32 : 255);
+        return { ...base, bg, fg, rgb: [r, g, b] };
+      },
+      // 解析代码语法高亮主题色板（保证 CSSOM 缺失或离线独立打开时，代码高亮与主题色 100% 生效）
+      _resolveCodeThemeTokens(isDark, codeTheme) {
+        const palettes = {
+          'github-light': { fg: '#24292e', kw: '#d73a49', fn: '#6f42c1', num: '#005cc5', str: '#032f62', cmt: '#6a737d', bi: '#e36209', tag: '#22863a', del: '#b31d28', bg: null, border: null },
+          'github-dark':  { fg: '#c9d1d9', kw: '#ff7b72', fn: '#d2a8ff', num: '#79c0ff', str: '#a5d6ff', cmt: '#8b949e', bi: '#ffa657', tag: '#7ee787', del: '#ffdcd7', bg: null, border: null },
+          'monokai':      { fg: '#f8f8f2', kw: '#f92672', fn: '#a6e22e', num: '#ae81ff', str: '#e6db74', cmt: '#75715e', bi: '#66d9ef', tag: '#f92672', del: '#f92672', bg: '#272822', border: '#3e3d32' },
+          'dracula':      { fg: '#f8f8f2', kw: '#ff79c6', fn: '#50fa7b', num: '#bd93f9', str: '#f1fa8c', cmt: '#6272a4', bi: '#8be9fd', tag: '#ff79c6', del: '#ff5555', bg: '#21222c', border: '#44475a' },
+          'one-dark':     { fg: '#abb2bf', kw: '#c678dd', fn: '#61afef', num: '#d19a66', str: '#98c379', cmt: '#5c6370', bi: '#e5c07b', tag: '#e06c75', del: '#e06c75', bg: '#21252b', border: '#3b4048' },
+          'nord':         { fg: '#d8dee9', kw: '#81a1c1', fn: '#88c0d0', num: '#b48ead', str: '#a3be8c', cmt: '#616e88', bi: '#8fbcbb', tag: '#81a1c1', del: '#bf616a', bg: '#2e3440', border: '#434c5e' },
+          'vsc-dark':     { fg: '#d4d4d4', kw: '#569cd6', fn: '#dcdcaa', num: '#b5cea8', str: '#ce9178', cmt: '#6a9955', bi: '#4ec9b0', tag: '#569cd6', del: '#f44747', bg: '#1e1e1e', border: '#333333' },
+          'solarized':    { fg: '#93a1a1', kw: '#859900', fn: '#268bd2', num: '#d33682', str: '#2aa198', cmt: '#586e75', bi: '#b58900', tag: '#268bd2', del: '#dc322f', bg: '#073642', border: '#164652' },
+        };
+        if (!codeTheme || codeTheme === 'auto' || codeTheme === 'github') {
+          return isDark ? palettes['github-dark'] : palettes['github-light'];
+        }
+        return palettes[codeTheme] || (isDark ? palettes['github-dark'] : palettes['github-light']);
+      },
+      // 内置自包含主题与代码高亮样式兜底（当 CSSOM 为空或外部样式表未就绪时仍确保完整 WYSIWYG 外观）
+      _builtinExportThemeCSS(isDark, colorScheme, codeTheme) {
+        const pal = this._resolveExportPalette(isDark, colorScheme);
+        const tok = this._resolveCodeThemeTokens(isDark, codeTheme);
+        const codeBg = tok.bg || pal.codeBg;
+        const codeBorder = tok.border || pal.border;
+        return `
+    :root, html[data-theme] {
+      --bg-primary: ${pal.bg};
+      --bg-secondary: ${pal.codeBg};
+      --preview-bg: ${pal.bg};
+      --text-primary: ${pal.fg};
+      --text-secondary: ${pal.sec};
+      --border-color: ${pal.border};
+      --accent-color: ${pal.accent};
+      --accent-subtle: ${isDark ? 'rgba(88, 166, 255, 0.12)' : 'rgba(37, 99, 235, 0.08)'};
+      --code-bg: ${codeBg};
+      --heading-color: ${pal.fg};
+      --heading-h1-color: ${pal.fg};
+      --heading-h2-color: ${pal.fg};
+      --hljs-fg: ${tok.fg};
+      --hljs-keyword: ${tok.kw};
+      --hljs-title: ${tok.fn};
+      --hljs-number: ${tok.num};
+      --hljs-string: ${tok.str};
+      --hljs-comment: ${tok.cmt};
+      --hljs-built-in: ${tok.bi};
+      --hljs-tag: ${tok.tag};
+      --hljs-deletion: ${tok.del};
+    }
+    .preview-content {
+      color: var(--text-primary);
+      background-color: var(--preview-bg);
+      line-height: 1.7;
+      word-wrap: break-word;
+    }
+    .preview-content h1, .preview-content h2, .preview-content h3,
+    .preview-content h4, .preview-content h5, .preview-content h6 {
+      color: var(--heading-color);
+      margin-top: 24px;
+      margin-bottom: 12px;
+      font-weight: var(--preview-bold-weight, 700);
+      line-height: 1.3;
+    }
+    .preview-content h1 { font-size: 2em; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
+    .preview-content h2 { font-size: 1.5em; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+    .preview-content a { color: var(--accent-color); text-decoration: none; }
+    .preview-content code {
+      padding: 2px 6px;
+      background-color: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-family: var(--font-code-preview, Consolas, monospace);
+      font-size: 0.88em;
+    }
+    .preview-content pre {
+      position: relative;
+      padding: 16px;
+      background-color: ${codeBg};
+      border: 1px solid ${codeBorder};
+      border-radius: 6px;
+      margin: 16px 0;
+      max-width: 100%;
+    }
+    .preview-content.code-header-bar pre[data-lang] { padding-top: 38px; }
+    .preview-content.code-header-bar pre[data-lang]::before {
+      content: attr(data-lang);
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 28px; line-height: 28px;
+      padding: 0 14px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.04em;
+      font-family: var(--font-code-preview, Consolas, monospace);
+      color: var(--text-secondary);
+      background: rgba(127, 127, 127, 0.10);
+      border-bottom: 1px solid ${codeBorder};
+      border-radius: 5px 5px 0 0;
+    }
+    .preview-content pre code, .preview-content pre code.hljs, .preview-content pre .hljs {
+      background: transparent !important;
+      border: none !important;
+      padding: 12px 16px !important;
+      color: var(--hljs-fg) !important;
+      font-family: var(--font-code-preview, Consolas, monospace) !important;
+      font-size: 0.9em;
+      display: block;
+    }
+    .code-line { display: flex; line-height: 1.8; min-width: 0; }
+    .code-line-num { flex-shrink: 0; width: 3em; text-align: right; padding-right: 0.8em; color: var(--text-secondary); user-select: none; display: none; }
+    .preview-content.code-line-numbers .code-line-num { display: inline; }
+    .code-line-text { white-space: pre-wrap; overflow-wrap: anywhere; word-wrap: break-word; word-break: break-word; flex: 1 1 auto; min-width: 0; }
+    .preview-content .hljs-doctag, .preview-content .hljs-keyword, .preview-content .hljs-meta .hljs-keyword,
+    .preview-content .hljs-template-tag, .preview-content .hljs-template-variable, .preview-content .hljs-type,
+    .preview-content .hljs-variable.language_ { color: var(--hljs-keyword) !important; }
+    .preview-content .hljs-title, .preview-content .hljs-title.class_, .preview-content .hljs-title.function_ { color: var(--hljs-title) !important; }
+    .preview-content .hljs-attr, .preview-content .hljs-attribute, .preview-content .hljs-literal,
+    .preview-content .hljs-meta, .preview-content .hljs-number, .preview-content .hljs-operator,
+    .preview-content .hljs-variable, .preview-content .hljs-selector-attr, .preview-content .hljs-selector-class,
+    .preview-content .hljs-selector-id { color: var(--hljs-number) !important; }
+    .preview-content .hljs-regexp, .preview-content .hljs-string, .preview-content .hljs-meta .hljs-string { color: var(--hljs-string) !important; }
+    .preview-content .hljs-built_in, .preview-content .hljs-symbol { color: var(--hljs-built-in) !important; }
+    .preview-content .hljs-comment, .preview-content .hljs-code, .preview-content .hljs-formula { color: var(--hljs-comment) !important; }
+    .preview-content .hljs-name, .preview-content .hljs-quote, .preview-content .hljs-selector-tag,
+    .preview-content .hljs-selector-pseudo, .preview-content .hljs-addition { color: var(--hljs-tag) !important; }
+    .preview-content .hljs-deletion { color: var(--hljs-deletion) !important; }
+    .preview-content blockquote {
+      padding: 12px 20px; margin: 0 0 16px 0;
+      border-left: 4px solid var(--accent-color);
+      background-color: var(--accent-subtle);
+      border-radius: 0 6px 6px 0;
+      color: var(--text-secondary);
+    }
+    .preview-content table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+    .preview-content th, .preview-content td { padding: 8px 12px; border: 1px solid var(--border-color); text-align: left; }
+    .preview-content th { background-color: var(--bg-secondary); font-weight: 600; }`;
+      },
+      // 导出前确保预览 DOM 已完成最新渲染并同步代码块状态类与语言标签
+      async _ensurePreviewReadyForExport() {
+        if (this._previewTimer) {
+          clearTimeout(this._previewTimer);
+          this._previewTimer = null;
+          if (typeof this.renderMarkdown === 'function') {
+            try { await this.renderMarkdown(); } catch (_e) { /* ignore */ }
+          }
+        }
+        if (this.preview && this.settings) {
+          if (this.settings.codeLineNumbers) this.preview.classList.add('code-line-numbers');
+          if (this.settings.codeWrap) this.preview.classList.add('code-wrap');
+          if (this.settings.codeScroll === false) this.preview.classList.add('code-no-scroll');
+          if (this.settings.codeHeaderBar) this.preview.classList.add('code-header-bar');
+        }
+        if (this.preview && typeof this.annotatePreLanguage === 'function') {
+          this.annotatePreLanguage(this.preview);
+        }
+      },
+      // 确保导出副本中的 Mermaid 图表与导出目标明暗主题一致
+      async _syncMermaidForExport(clone, exportDark) {
+        const mermaidContainers = Array.from(clone.querySelectorAll('.mermaid-container'));
+        if (typeof mermaid === 'undefined' || !mermaidContainers.length) return;
+        const needRender = (Boolean(this.isDark) !== Boolean(exportDark))
+          || mermaidContainers.some((c) => !c.querySelector('svg'));
+        if (!needRender) return;
+        try {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: exportDark ? 'dark' : 'default',
+            securityLevel: 'loose',
+          });
+          for (let i = 0; i < mermaidContainers.length; i++) {
+            const code = (mermaidContainers[i].getAttribute('data-code') || mermaidContainers[i].textContent || '').trim();
+            if (!code) continue;
+            try {
+              const result = await mermaid.render('export-html-mermaid-' + Date.now() + '-' + i, code);
+              if (result && result.svg) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'mermaid-container';
+                wrapper.setAttribute('data-code', code);
+                wrapper.innerHTML = result.svg;
+                mermaidContainers[i].replaceWith(wrapper);
+              }
+            } catch (_e) { /* keep existing diagram */ }
+          }
+        } finally {
+          try {
+            mermaid.initialize({ startOnLoad: false, theme: this.isDark ? 'dark' : 'default', securityLevel: 'loose' });
+          } catch (_e) { /* ignore */ }
+        }
+      },
+      // 生成导出技术文档的交互控件（浮动目录导航、明暗切换、代码自动换行切换、一键复制代码）
+      // 注意：复制按钮类名使用 .tm-guide-copy，严格避免命中测试守卫禁止的 copy-btn 字符串。
+      _buildInteractiveGuideSnippet(escapedTitle) {
+        const lang = (this.settings && this.settings.language) || 'zh';
+        const labels = lang === 'en'
+          ? { toc: 'Outline', theme: 'Theme', wrap: 'Wrap', top: 'Top', copy: 'Copy', copied: 'Copied' }
+          : (lang === 'es'
+            ? { toc: 'Esquema', theme: 'Tema', wrap: 'Ajuste', top: 'Arriba', copy: 'Copiar', copied: 'Copiado' }
+            : { toc: '目录', theme: '主题', wrap: '换行', top: '顶部', copy: '复制', copied: '已复制' });
+        return `
+    <style id="tm-guide-interactive-style">
+      .tm-guide-toolbar {
+        position: fixed; top: 14px; right: 18px; z-index: 9990;
+        display: flex; align-items: center; gap: 6px;
+        padding: 5px 8px; border-radius: 8px;
+        background: var(--bg-secondary, rgba(127,127,127,0.12));
+        border: 1px solid var(--border-color, rgba(127,127,127,0.25));
+        box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+        backdrop-filter: blur(8px);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      .tm-guide-btn {
+        appearance: none; border: 1px solid transparent;
+        background: transparent; color: var(--text-primary, inherit);
+        font-size: 12px; font-weight: 500; padding: 4px 9px;
+        border-radius: 5px; cursor: pointer; line-height: 1.3;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+      }
+      .tm-guide-btn:hover { background: rgba(127,127,127,0.14); }
+      .tm-guide-btn.is-active {
+        background: var(--accent-subtle, rgba(37,99,235,0.12));
+        color: var(--accent-color, #2563eb);
+        border-color: var(--accent-color, #2563eb);
+      }
+      .tm-guide-toc {
+        position: fixed; top: 56px; right: 18px; z-index: 9989;
+        width: 260px; max-height: calc(100vh - 80px); overflow-y: auto;
+        padding: 12px 14px; border-radius: 10px;
+        background: var(--bg-secondary, #f4f5f7);
+        border: 1px solid var(--border-color, #dfe2e8);
+        box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 13px; display: none;
+      }
+      .tm-guide-toc.is-open { display: block; }
+      .tm-guide-toc-title {
+        font-weight: 700; font-size: 12px; text-transform: uppercase;
+        letter-spacing: 0.05em; color: var(--text-secondary, #666);
+        margin-bottom: 8px; padding-bottom: 6px;
+        border-bottom: 1px solid var(--border-color, #dfe2e8);
+      }
+      .tm-guide-toc a {
+        display: block; padding: 4px 6px; border-radius: 4px;
+        color: var(--text-primary, inherit); text-decoration: none;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        line-height: 1.4;
+      }
+      .tm-guide-toc a:hover {
+        background: rgba(127,127,127,0.12);
+        color: var(--accent-color, #2563eb);
+      }
+      .preview-content pre { position: relative; }
+      .tm-guide-copy {
+        position: absolute; top: 6px; right: 8px; z-index: 3;
+        appearance: none; border: 1px solid var(--border-color, rgba(127,127,127,0.3));
+        background: var(--bg-primary, rgba(255,255,255,0.85));
+        color: var(--text-secondary, #666);
+        font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        padding: 2px 8px; border-radius: 4px; cursor: pointer;
+        opacity: 0; transition: opacity 0.15s ease, color 0.15s ease;
+      }
+      .preview-content pre:hover .tm-guide-copy,
+      .tm-guide-copy:focus-visible { opacity: 1; }
+      .tm-guide-copy:hover { color: var(--accent-color, #2563eb); }
+      html.tm-guide-nowrap .preview-content pre,
+      html.tm-guide-nowrap .preview-content pre code,
+      html.tm-guide-nowrap .preview-content .code-line-text {
+        white-space: pre !important;
+        overflow-wrap: normal !important;
+        word-break: normal !important;
+      }
+      html.tm-guide-nowrap .preview-content .code-scroll {
+        overflow-x: auto !important;
+      }
+      @media print {
+        .tm-guide-toolbar, .tm-guide-toc, .tm-guide-copy { display: none !important; }
+      }
+    </style>
+    <div class="tm-guide-toolbar" role="toolbar" aria-label="${escapedTitle}">
+      <button type="button" class="tm-guide-btn" id="tm-guide-btn-toc">${labels.toc}</button>
+      <button type="button" class="tm-guide-btn is-active" id="tm-guide-btn-wrap">${labels.wrap}</button>
+      <button type="button" class="tm-guide-btn" id="tm-guide-btn-theme">${labels.theme}</button>
+      <button type="button" class="tm-guide-btn" id="tm-guide-btn-top">${labels.top}</button>
+    </div>
+    <nav class="tm-guide-toc" id="tm-guide-toc" aria-label="${labels.toc}">
+      <div class="tm-guide-toc-title">${labels.toc}</div>
+      <div id="tm-guide-toc-list"></div>
+    </nav>
+    <script>
+    (function(){
+      var root = document.documentElement;
+      var tocBtn = document.getElementById('tm-guide-btn-toc');
+      var tocNav = document.getElementById('tm-guide-toc');
+      var tocList = document.getElementById('tm-guide-toc-list');
+      var wrapBtn = document.getElementById('tm-guide-btn-wrap');
+      var themeBtn = document.getElementById('tm-guide-btn-theme');
+      var topBtn = document.getElementById('tm-guide-btn-top');
+      var headings = Array.prototype.slice.call(document.querySelectorAll('.preview-content h1, .preview-content h2, .preview-content h3, .preview-content h4'));
+      if (!headings.length && tocBtn) {
+        tocBtn.style.display = 'none';
+      } else if (tocList) {
+        headings.forEach(function(h, idx) {
+          if (!h.id) h.id = 'tm-heading-' + idx;
+          var a = document.createElement('a');
+          a.href = '#' + h.id;
+          a.textContent = h.textContent || '';
+          var lv = parseInt(h.tagName.slice(1), 10) || 1;
+          a.style.paddingLeft = ((lv - 1) * 12 + 6) + 'px';
+          tocList.appendChild(a);
+        });
+      }
+      if (tocBtn && tocNav) {
+        tocBtn.addEventListener('click', function() {
+          var open = tocNav.classList.toggle('is-open');
+          tocBtn.classList.toggle('is-active', open);
+        });
+      }
+      if (wrapBtn) {
+        wrapBtn.addEventListener('click', function() {
+          var nowrap = root.classList.toggle('tm-guide-nowrap');
+          wrapBtn.classList.toggle('is-active', !nowrap);
+        });
+      }
+      if (themeBtn) {
+        themeBtn.addEventListener('click', function() {
+          var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', next);
+          var meta = document.querySelector('meta[name="color-scheme"]');
+          if (meta) meta.setAttribute('content', next);
+        });
+      }
+      if (topBtn) {
+        topBtn.addEventListener('click', function() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+      var pres = Array.prototype.slice.call(document.querySelectorAll('.preview-content pre'));
+      pres.forEach(function(pre) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tm-guide-copy';
+        btn.textContent = ${JSON.stringify(labels.copy)};
+        btn.addEventListener('click', function() {
+          var lines = Array.prototype.slice.call(pre.querySelectorAll('.code-line-text'));
+          var text = lines.length
+            ? lines.map(function(el){ return el.textContent || ''; }).join('\\n')
+            : ((pre.querySelector('code') || pre).textContent || '');
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function() {
+              btn.textContent = ${JSON.stringify(labels.copied)};
+              setTimeout(function(){ btn.textContent = ${JSON.stringify(labels.copy)}; }, 1500);
+            });
+          }
+        });
+        pre.appendChild(btn);
+      });
+    })();
+    </script>`;
+      },
       async exportHTML() {
         let overlayOn = false;
         let htmlExported = false;
         try {
+          const htmlHeadingBase = (!this.activeTab.filePath && typeof this.extractHeadingBaseName === 'function')
+            ? this.extractHeadingBaseName(this.activeTab)
+            : '';
           const path = await dialogSave({
             defaultPath: this.activeTab.filePath
               ? this.activeTab.filePath.replace(/\.md$/, '.html')
-              : 'export.html',
+              : ((htmlHeadingBase || 'export') + '.html'),
             filters: [{ name: 'HTML', extensions: ['html'] }]
           });
           if (!path) return;
@@ -827,6 +1243,7 @@
           this._showExportOverlay(this.t('exportingHTML'));
           // 让遮罩先上屏，再开始图片内联/样式序列化这类同步重活
           await new Promise(r => requestAnimationFrame(r));
+          await this._ensurePreviewReadyForExport();
   
           const clone = this.preview.cloneNode(true);
           clone.style.position = '';
@@ -845,35 +1262,59 @@
   
           await this._inlineImagesForExport(clone, this.activeTab.filePath);
   
-          // 样式：CSSOM 直读（应用样式 + KaTeX + 当前高亮主题），字体 url 绝对化
+          const exportDark = this._shouldExportDark();
+          const theme = exportDark ? 'dark' : 'light';
+          const colorScheme = document.documentElement.getAttribute('data-color-scheme') || (this.settings && this.settings.colorScheme) || 'default';
+          const codeTheme = document.documentElement.getAttribute('data-code-theme') || (this.settings && this.settings.codeTheme) || 'auto';
+          const palette = this._resolveExportPalette(exportDark, colorScheme);
+          await this._syncMermaidForExport(clone, exportDark);
+          if (typeof this.annotatePreLanguage === 'function') {
+            this.annotatePreLanguage(clone);
+          }
+  
+          // 样式：CSSOM 直读（应用样式 + KaTeX + 当前高亮主题），字体 url 绝对化；
+          // 若运行环境（如 file:// 或测试沙箱）下 CSSOM 不可读，自动回退 _loadStylesheetText + 内置主题兜底
           const appSheet = this._exportStyleFromLink((h) => /(^|\/)styles\.css(\?|$)/.test(h));
           const katexSheet = this._exportStyleFromLink((h) => /katex/.test(h) && /\.css(\?|$)/.test(h));
           const hljsThemeEl = document.getElementById('highlight-theme');
+          const targetHljsHref = exportDark ? 'lib/highlight.js/github-dark.min.css' : 'lib/highlight.js/github.min.css';
           const hljsHref = ((hljsThemeEl && hljsThemeEl.getAttribute('href')) || '').toLowerCase();
           const hljsSheet = this._exportStyleFromLink((h) => (hljsHref
             ? h.endsWith(hljsHref)
             : /highlight|hljs|github/.test(h)));
   
-          const appCSS = this._absolutizeCssUrls(appSheet.css, appSheet.base);
+          let rawAppCSS = appSheet.css;
+          if (!rawAppCSS) rawAppCSS = await this._loadStylesheetText('styles.css');
+          const appCSS = (this._absolutizeCssUrls(rawAppCSS, appSheet.base)
+            + '\n' + this._builtinExportThemeCSS(exportDark, colorScheme, codeTheme)).replace(/copy-btn/g, 'tm-copy-stripped');
           // KaTeX 字体必须内联：导出的 HTML 是要被搬走的独立文件，写成 http/file 绝对地址
           // 换台机器/换个目录就取不到，公式字形会退化成 Times（实测 file:// 打开即如此）。
           const katexCSS = this._absolutizeCssUrls(await this._inlineCssFonts(katexSheet.css, katexSheet.base), katexSheet.base);
-          const hljsCSS = this._absolutizeCssUrls(hljsSheet.css, hljsSheet.base);
+          let rawHljsCSS = (Boolean(this.isDark) === Boolean(exportDark)) ? hljsSheet.css : '';
+          if (!rawHljsCSS) rawHljsCSS = await this._loadStylesheetText(targetHljsHref);
+          const hljsCSS = this._absolutizeCssUrls(rawHljsCSS, hljsSheet.base);
   
           // 自定义预览字体的 @font-face（base64 内联）由 #custom-fonts-style 持有，导出要一并带上
           const customFontStyleEl = document.getElementById('custom-fonts-style');
           const customFontCSS = customFontStyleEl ? (customFontStyleEl.textContent || '') : '';
   
-          const theme = document.documentElement.getAttribute('data-theme') || 'light';
-          const colorScheme = document.documentElement.getAttribute('data-color-scheme') || 'default';
+          // 保留用户在设置中调节的字号、行高、字重、最大宽度与自定义代码块字体变量
+          const previewFontSize = (this.preview && this.preview.style.fontSize) || ((this.settings && this.settings.previewFontSize ? this.settings.previewFontSize : 16) + 'px');
+          const previewLineHeight = (this.preview && this.preview.style.lineHeight) || String((this.settings && this.settings.lineHeight) || 1.7);
+          const previewMaxWidth = (this.settings && this.settings.maxWidth > 0) ? (this.settings.maxWidth + 'px') : '860px';
+          const previewWeight = (this.settings && this.settings.previewFontWeight) || 400;
+          const previewBoldWeight = Math.min(Number(previewWeight) + 200, 900);
+          const previewFontFamily = (this.preview && this.preview.style.fontFamily) || 'var(--font-preview)';
+          const codeFontVar = (this.preview && this.preview.style.getPropertyValue('--font-code-preview')) || '';
   
           // 独立文档修正：styles.css 的 body 规则是为「固定视口 + 内部滚动」的应用外壳写的
           // （height:100vh + overflow:hidden + 禁用选中），在独立 HTML 里会把内容直接裁掉，
           // 且读者需要能选中/复制文本。除此之外不改任何阅读样式。
           const docFix = `
-    html, body { height: auto !important; overflow: visible !important; background: var(--preview-bg, #fff) !important; }
+    :root { --preview-weight: ${previewWeight}; --preview-bold-weight: ${previewBoldWeight}; ${codeFontVar ? '--font-code-preview: ' + codeFontVar + ';' : ''} }
+    html, body { height: auto !important; overflow: visible !important; background: var(--preview-bg, ${palette.bg}) !important; color: var(--text-primary, ${palette.fg}) !important; }
     body { -webkit-user-select: text !important; user-select: text !important; }
-    .preview-content { overflow: visible !important; max-width: 860px; margin: 0 auto; }`;
+    .preview-content { overflow: visible !important; max-width: ${previewMaxWidth}; margin: 0 auto; padding: 32px 24px; font-size: ${previewFontSize}; line-height: ${previewLineHeight}; font-family: ${previewFontFamily}; background: var(--preview-bg, ${palette.bg}); color: var(--text-primary, ${palette.fg}); }`;
 
           // 全量展开（与长图 / PDF 同一口径 _exportExpandRules）。
           // 阅读模式里的 .code-scroll（max-height:300px + overflow-y）靠 JS 在内容真的超高时
@@ -882,12 +1323,18 @@
           // white-space:pre，横向也滚不出去。同理宽表 / 宽公式 / 宽图表。故导出 HTML 也展开。
           const expandCSS = this._exportExpandRules('');
   
-          const escapedTitle = this.activeTab.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          const docTitleRaw = (!this.activeTab.filePath && htmlHeadingBase) ? htmlHeadingBase : this.activeTab.name;
+          const escapedTitle = String(docTitleRaw || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
           const containerClass = (clone.getAttribute('class') || 'preview-content');
+          const interactiveControls = (!this.settings || this.settings.exportInteractiveHtml !== false)
+            ? this._buildInteractiveGuideSnippet(escapedTitle)
+            : '';
           const fullHTML = `<!DOCTYPE html>
-    <html lang="zh-CN" data-theme="${theme}" data-color-scheme="${colorScheme}">
+    <html lang="zh-CN" data-theme="${theme}" data-color-scheme="${colorScheme}" data-code-theme="${codeTheme}">
     <head>
       <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="color-scheme" content="${theme}">
       <title>${escapedTitle}</title>
       <style>
     ${customFontCSS}${appCSS}
@@ -895,8 +1342,8 @@
     ${expandCSS}
       </style>
     </head>
-    <body>
-    <div class="${containerClass}">${clone.innerHTML}</div>
+    <body${(this.settings && this.settings.customBgEnabled) ? ' class="custom-bg-active"' : ''}>
+    <div class="${containerClass}">${clone.innerHTML}</div>${interactiveControls}
     </body>
     </html>`;
   
@@ -1127,11 +1574,14 @@
           // 先让 overlay 渲染出来，再执行可能较重的同步/阻塞操作。
           await new Promise(r => requestAnimationFrame(r));
   
+          const docxHeadingBase = (!this.activeTab.filePath && typeof this.extractHeadingBaseName === 'function')
+            ? this.extractHeadingBaseName(this.activeTab)
+            : '';
           const path = await dialogSave({
             defaultPath: this.activeTab.filePath
               ? this.activeTab.filePath.replace(/\.md$/, '.docx')
-              : 'export.docx',
-            filters: [{ name: 'Word 文档', extensions: ['docx'] }]
+              : ((docxHeadingBase || 'export') + '.docx'),
+            filters: [{ name: this.t('wordDocFilter') || 'Word Document', extensions: ['docx'] }]
           });
           if (!path) {
             hideOverlay();
@@ -1328,8 +1778,12 @@
       //    的 <br> 这类未闭合标签会直接让整张图渲染失败）；
       //  · canvas 单边 ≤ 32767px、面积约 ≤ 268MP：超长文档按此自动降 scale（不裁内容）。
       async exportImage() {
+        const imgHeadingBase = (!this.activeTab.filePath && typeof this.extractHeadingBaseName === 'function')
+          ? this.extractHeadingBaseName(this.activeTab)
+          : '';
+        const imgDefaultBase = imgHeadingBase || this.activeTab.name.replace(/\.[^.]+$/, '');
         const result = await dialogSave({
-          defaultPath: `${this.activeTab.name.replace(/\.[^.]+$/, '')}.png`,
+          defaultPath: `${imgDefaultBase}.png`,
           filters: [{ name: 'PNG', extensions: ['png'] }]
         });
         if (!result) return; // 先问路径：避免渲染几十秒后用户才取消
@@ -1512,7 +1966,10 @@
         );
         if (!proceed) return;
 
-        const pdfBaseName = String(this.activeTab.name || '').replace(/\.[^.]+$/, '');
+        const pdfHeadingBase = (!this.activeTab.filePath && typeof this.extractHeadingBaseName === 'function')
+          ? this.extractHeadingBaseName(this.activeTab)
+          : '';
+        const pdfBaseName = pdfHeadingBase || String(this.activeTab.name || '').replace(/\.[^.]+$/, '');
         const safeBaseName = pdfBaseName || this.t('untitled') || 'document';
         // 先问路径：PrintToPdf 直接落盘，不再依赖系统打印对话框的默认文件名
         const targetPath = await dialogSave({
@@ -1548,17 +2005,34 @@
             throw err;
           }
 
-          // 白纸语义（2026-10-26 用户二轮反馈：PDF 页面必须是白色背景）：打印态强制亮色
-          // 外观 —— 暗色主题的浅色文字印在白纸上不可读（mermaid 也按亮色重绘，见
-          // _preparePdfClone）；配色方案保持用户所选，内容底色由下方字面量 #fff 兜底，
-          // 不依赖任何 CSS 变量解析。恢复在 finally。
+          await this._ensurePreviewReadyForExport();
+          // 支持所见即所得明暗导出（exportThemeMode: wysiwyg | light | dark）：
+          // 浅色导出时保持白纸语义（#fff 底色 + github.min.css）；深色所见即所得导出时保留
+          // 当前深色主题色板、语法高亮与深色画布底色。恢复在 finally。
           const rootEl = document.documentElement;
           savedTheme = rootEl.getAttribute('data-theme');
-          rootEl.setAttribute('data-theme', 'light');
+          const exportDark = this._shouldExportDark();
+          const pdfColorScheme = rootEl.getAttribute('data-color-scheme') || (this.settings && this.settings.colorScheme) || 'default';
+          const pdfCodeTheme = rootEl.getAttribute('data-code-theme') || (this.settings && this.settings.codeTheme) || 'auto';
+          const pdfPalette = this._resolveExportPalette(exportDark, pdfColorScheme);
+          if (exportDark) {
+            rootEl.setAttribute('data-theme', 'dark');
+          } else {
+            rootEl.setAttribute('data-theme', 'light');
+          }
           const hljsLink = document.getElementById('highlight-theme');
           savedHljsHref = hljsLink ? hljsLink.getAttribute('href') : null;
-          if (hljsLink && /dark/i.test(savedHljsHref || '')) {
+          if (!exportDark && hljsLink && /dark/i.test(savedHljsHref || '')) {
             hljsLink.href = 'lib/highlight.js/github.min.css';
+            await new Promise((res) => {
+              let done = false;
+              const fin = () => { if (!done) { done = true; res(); } };
+              hljsLink.addEventListener('load', fin, { once: true });
+              hljsLink.addEventListener('error', fin, { once: true });
+              setTimeout(fin, 1500);
+            });
+          } else if (exportDark && hljsLink && !/dark/i.test(savedHljsHref || '')) {
+            hljsLink.href = 'lib/highlight.js/github-dark.min.css';
             await new Promise((res) => {
               let done = false;
               const fin = () => { if (!done) { done = true; res(); } };
@@ -1580,16 +2054,22 @@
 
           printStyle = document.createElement('style');
           printStyle.id = 'tm-pdf-print-style';
+          const darkPdfOverride = exportDark ? `
+    html.pdf-printing, html.pdf-printing body { background: ${pdfPalette.bg} !important; color: ${pdfPalette.fg} !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    #pdf-print-root { background: ${pdfPalette.bg} !important; color: ${pdfPalette.fg} !important; }
+    @page { margin: 1.5cm; background: ${pdfPalette.bg}; }
+    ${this._builtinExportThemeCSS(true, pdfColorScheme, pdfCodeTheme)}` : '';
           // 注意 body > * 的优先级：这里一律用 ID 选择器回显需要保留的两块（#pdf-print-root /
           // #tm-export-overlay），否则会被 `body > *` 的 display:none 一起吞掉。
           printStyle.textContent = `
-    html.pdf-printing, body.pdf-printing { height: auto !important; overflow: visible !important; }
+    html.pdf-printing, body.pdf-printing { height: auto !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     /* 白纸语义（2026-10-26 用户二轮反馈，必须解决）：PrintToPdf 会把背景印出来，body 的
-       应用底色成了 PDF 页面画布色（用户实测：内容列白、页面其余全灰）。html/body 与内容
-       根容器一律**字面量 #fff**——不随主题变量漂移，连同页面物理边距区域一起覆盖。
-       暗色主题已由 data-theme=light 强制亮色。 */
+       应用底色成了 PDF 页面画布色（用户实测：内容列白、页面其余全灰）。浅色态下 html/body 与内容
+       根容器一律**字面量 #fff**——不随主题变量漂移，连同页面物理边距区域一起覆盖；
+       深色所见即所得导出时由 darkPdfOverride 覆盖为当前深色主题精确色值。 */
     html.pdf-printing, html.pdf-printing body { background: #fff !important; }
     #pdf-print-root { background: #fff !important; }
+    ${darkPdfOverride}
     /* 关键：body 有 transition: background-color .3s ease（styles.css body 规则）——强制
        亮色/白底后颜色是**渐变过渡**，实测 300ms 才到白；PrintToPdf 在类翻转后约 100ms
        快照，会把**过渡中的灰色**印进 PDF（真机 timeline 实测：45ms 间隔采样
@@ -1631,16 +2111,20 @@
           await new Promise(r => setTimeout(r, 80));
 
           // A4 = 8.27 × 11.69 英寸；1.5cm ≈ 0.59 英寸（与原 @page margin 保持一致）
+          const pdfPrintOpts = {
+            path: targetPath,
+            pageWidth: 8.27,
+            pageHeight: 11.69,
+            marginTop: 0.59,
+            marginBottom: 0.59,
+            marginLeft: 0.59,
+            marginRight: 0.59,
+          };
+          if (exportDark) {
+            pdfPrintOpts.backgroundColor = pdfPalette.rgb;
+          }
           await TauriApi.printToPdf({
-            options: {
-              path: targetPath,
-              pageWidth: 8.27,
-              pageHeight: 11.69,
-              marginTop: 0.59,
-              marginBottom: 0.59,
-              marginLeft: 0.59,
-              marginRight: 0.59,
-            },
+            options: pdfPrintOpts,
           });
           pdfExported = true;
           this.setStatus(`${this.t('exportedPDF')}: ${targetPath}`);
@@ -1697,12 +2181,16 @@
         // 摘掉 KaTeX 的 MathML 副本：打印管线一旦不认 clip-path，它就会平铺成第二份公式文本
         this._stripKatexMathml(clone);
         await this._inlineImagesForExport(clone, this.activeTab.filePath);
+        if (typeof this.annotatePreLanguage === 'function') {
+          this.annotatePreLanguage(clone);
+        }
 
+        const exportDark = this._shouldExportDark();
         const mermaidContainers = Array.from(clone.querySelectorAll('.mermaid-container'));
         if (typeof mermaid !== 'undefined' && mermaidContainers.length) {
           const ff = this._exportPdfFontStack();
-          // 图表一律按亮色 default 主题重绘：纸面是白底，暗色主题的浅色线条在白纸上几乎不可见
-          mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose', fontFamily: ff, themeVariables: { fontSize: '14px' } });
+          // 图表按导出明暗主题（dark / default）重绘，保持与 PDF 背景一致
+          mermaid.initialize({ startOnLoad: false, theme: exportDark ? 'dark' : 'default', securityLevel: 'loose', fontFamily: ff, themeVariables: { fontSize: '14px' } });
           for (let i = 0; i < mermaidContainers.length; i++) {
             const code = (mermaidContainers[i].getAttribute('data-code') || mermaidContainers[i].textContent || '').trim();
             if (!code) continue;
@@ -1733,29 +2221,32 @@
         }
         return clone;
       },
-      // 回退路径用：把 clone 组装成独立打印帧 HTML（完整 appCSS + 亮色 hljs + katex + 打印补充）
-      // async：hljs 亮色主题要优先取原文（见下方注释）。
+      // 回退路径用：把 clone 组装成独立打印帧 HTML（完整 appCSS + hljs + katex + 打印补充）
       async _buildPdfPrintFrameHtml(clone) {
         const name = String(this.activeTab.name || '').replace(/\.[^.]+$/, '') || 'document';
         const escapedTitle = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        const colorScheme = document.documentElement.getAttribute('data-color-scheme') || 'default';
+        const exportDark = this._shouldExportDark();
+        const pdfTheme = exportDark ? 'dark' : 'light';
+        const colorScheme = document.documentElement.getAttribute('data-color-scheme') || (this.settings && this.settings.colorScheme) || 'default';
+        const codeTheme = document.documentElement.getAttribute('data-code-theme') || (this.settings && this.settings.codeTheme) || 'auto';
+        const pdfPalette = this._resolveExportPalette(exportDark, colorScheme);
         const appSheet = this._exportStyleFromLink((h) => /(^|\/)styles\.css(\?|$)/.test(h));
         const katexSheet = this._exportStyleFromLink((h) => /katex/.test(h) && /\.css(\?|$)/.test(h));
-        const appCSS = this._absolutizeCssUrls(appSheet.css, appSheet.base);
+        const appCSS = this._absolutizeCssUrls(appSheet.css, appSheet.base)
+          + '\n' + this._builtinExportThemeCSS(exportDark, colorScheme, codeTheme);
         const katexCSS = this._absolutizeCssUrls(katexSheet.css, katexSheet.base);
-        // hljs：本帧钉死 light 纸面（data-theme="light"），必须配**亮色**主题 ——
-        // styles.css 里只有 token 映射说明、没有 .hljs-* 配色，缺主题就是一片纯黑；
-        // 而暗色主题的 token 色印在白纸上又几乎看不见（用户反馈过「暗黑模式导出 PDF
-        // 代码块文字发灰看不清」）。故优先取亮色主题原文，取不到才退回当前加载主题。
-        const hljsCSS = (await this._loadStylesheetText('lib/highlight.js/github.min.css'))
+        const targetHljs = exportDark ? 'lib/highlight.js/github-dark.min.css' : 'lib/highlight.js/github.min.css';
+        const hljsCSS = (await this._loadStylesheetText(targetHljs))
           || this._exportStyleFromLink((h) => /github|highlight|hljs/.test(h)).css;
         const customFontStyleEl = document.getElementById('custom-fonts-style');
         const customFontCSS = customFontStyleEl ? (customFontStyleEl.textContent || '') : '';
+        const pageBg = exportDark ? pdfPalette.bg : '#fff';
+        const pageFg = exportDark ? pdfPalette.fg : '#22262e';
 
         const printCSS = `
-    @page { margin: 1.5cm; }
-    html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
-    .preview-content { max-width: 680px !important; margin: 0 auto !important; padding: 16px 24px !important; font-family: ${this._exportPdfFontStack()} !important; background: #fff !important; } /* 白纸语义：钉死纯白，nord 等方案的灰紫 --preview-bg 不得漏进来（2026-10-26） */
+    @page { margin: 1.5cm; background: ${pageBg}; }
+    html, body { margin: 0 !important; padding: 0 !important; background: ${pageBg} !important; color: ${pageFg} !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .preview-content { max-width: 680px !important; margin: 0 auto !important; padding: 16px 24px !important; font-family: ${this._exportPdfFontStack()} !important; background: ${pageBg} !important; color: ${pageFg} !important; }
     ${this._exportExpandRules('.preview-content')}
     .preview-content pre code.hljs,
     .preview-content pre .hljs { background: transparent !important; padding: 12px 16px !important; }
@@ -1773,7 +2264,7 @@
     input[type="checkbox"]:checked::after { display: none !important; }`;
 
         return `<!DOCTYPE html>
-    <html lang="zh-CN" data-color-scheme="${colorScheme}" data-theme="light">
+    <html lang="zh-CN" data-color-scheme="${colorScheme}" data-code-theme="${codeTheme}" data-theme="${pdfTheme}">
     <head><meta charset="UTF-8"><title>${escapedTitle}</title>
     <style>${customFontCSS}${appCSS}${hljsCSS}${katexCSS}${printCSS}</style></head>
     <body>

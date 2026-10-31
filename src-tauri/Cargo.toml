@@ -1,8 +1,8 @@
 [package]
 name = "tizumark"
 version = "1.2.4"
-description = "A lightweight cross-platform Markdown editor"
-authors = ["TizuMark"]
+description = "JoeMark — Developer-focused Markdown & technical guide editor (based on TizuMark)"
+authors = ["Josiah \"Joedroid\" Tetteh <jositette@gmail.com>", "TizuMark Contributors"]
 edition = "2021"
 license = "GPL-3.0"
 

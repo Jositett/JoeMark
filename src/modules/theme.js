@@ -72,6 +72,7 @@
             ? 'lib/highlight.js/github-dark.min.css'
             : 'lib/highlight.js/github.min.css';
         }
+        document.documentElement.setAttribute('data-code-theme', (this.settings && this.settings.codeTheme) || 'auto');
       },
       // 浏览器原生 UI 的用色系（滚动条 / 原生表单控件 / 文本 I 型指针）跟随**应用**主题。
       // index.html 的 <meta name="color-scheme" content="light dark"> 只是声明「两套都支持」，

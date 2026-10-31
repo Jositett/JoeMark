@@ -311,18 +311,46 @@ class MarkdownEditor {
       case 'insert-subscript': this.wrapSelection('<sub>', '</sub>'); break;
       // 内容类型补齐（2026-10-22 全量比对新增，面板默认不启用）：光标偏移=插入文本内
       // 待填位置（insertBlock 口径），wrapSelection 空选区时插入空壳、光标落壳内。
-      case 'insert-dl': this.insertBlock('术语\n: 释义', 2); break;
-      case 'insert-details': this.insertBlock('<details>\n<summary>点击展开</summary>\n\n内容\n\n</details>', 35); break;
-      case 'insert-footnote': this.insertBlock('[^1]: 脚注内容', 6); break;
+      case 'insert-dl': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '术语\n: 释义' : 'Term\n: Definition', isZh ? 2 : 4);
+        break;
+      }
+      case 'insert-details': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '<details>\n<summary>点击展开</summary>\n\n内容\n\n</details>' : '<details>\n<summary>Click to expand</summary>\n\nContent\n\n</details>', isZh ? 35 : 46);
+        break;
+      }
+      case 'insert-footnote': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '[^1]: 脚注内容' : '[^1]: Footnote text', 6);
+        break;
+      }
       case 'insert-progress': this.insertBlock('<progress value="70" max="100"></progress>', 17); break;
-      case 'insert-center': this.insertBlock('<center>\n居中显示的文本\n</center>', 9); break;
+      case 'insert-center': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '<center>\n居中显示的文本\n</center>' : '<center>\nCentered text\n</center>', 9);
+        break;
+      }
       case 'insert-u': this.wrapSelection('<u>', '</u>'); break;
       case 'insert-ins': this.wrapSelection('<ins>', '</ins>'); break;
       case 'insert-del': this.wrapSelection('<del>', '</del>'); break;
-      case 'insert-figure': this.insertBlock('<figure>\n  <img src="图片地址" alt="图片描述">\n  <figcaption>图注文字</figcaption>\n</figure>', 21); break;
+      case 'insert-figure': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '<figure>\n  <img src="图片地址" alt="图片描述">\n  <figcaption>图注文字</figcaption>\n</figure>' : '<figure>\n  <img src="image.png" alt="Description">\n  <figcaption>Caption</figcaption>\n</figure>', 21);
+        break;
+      }
       case 'insert-kbd': this.wrapSelection('<kbd>', '</kbd>'); break;
-      case 'insert-abbreviation': this.wrapSelection('<abbr title="完整词">', '</abbr>'); break;
-      case 'insert-ruby': this.insertBlock('<ruby>文字<rt>拼音</rt></ruby>', 6); break;
+      case 'insert-abbreviation': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.wrapSelection(isZh ? '<abbr title="完整词">' : '<abbr title="Full term">', '</abbr>');
+        break;
+      }
+      case 'insert-ruby': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '<ruby>文字<rt>拼音</rt></ruby>' : '<ruby>Base<rt>Annotation</rt></ruby>', 6);
+        break;
+      }
 
       case 'insert-h1': this.applyHeadingLevel(1); break;
       case 'insert-h2': this.applyHeadingLevel(2); break;
@@ -332,18 +360,46 @@ class MarkdownEditor {
       case 'insert-h6': this.applyHeadingLevel(6); break;
 
       case 'insert-code-block': this.insertBlock('```javascript\n// code here\n```', 14); break;
-      case 'insert-table': this.insertBlock('| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |', 2); break;
+      case 'insert-table': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |' : `| ${this.t('column1')} | ${this.t('column2')} | ${this.t('column3')} |\n| --- | --- | --- |\n| ${this.t('content')} | ${this.t('content')} | ${this.t('content')} |`, 2);
+        break;
+      }
       case 'insert-quote': this.insertLinePrefix('> '); break;
-      case 'insert-math-block': this.insertBlock('$$\nE = mc^2\n$$', 3); break;
-      case 'insert-mermaid': this.insertBlock('```mermaid\ngraph TD\n    A[开始] --> B[结束]\n```', 11); break;
+      case 'insert-math-block': this.insertBlock('$\nE = mc^2\n$', 3); break;
+      case 'insert-mermaid': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '```mermaid\ngraph TD\n    A[开始] --> B[结束]\n```' : '```mermaid\ngraph TD\n    A[Start] --> B[End]\n```', 11);
+        break;
+      }
       case 'insert-hr': this.insertBlock('---'); break;
       case 'insert-toc': this.insertBlock('[TOC]'); break;
 
-      case 'insert-callout-note': this.insertBlock('> [!NOTE]\n> 提示内容', 12); break;
-      case 'insert-callout-tip': this.insertBlock('> [!TIP]\n> 建议内容', 11); break;
-      case 'insert-callout-warning': this.insertBlock('> [!WARNING]\n> 警告内容', 15); break;
-      case 'insert-callout-caution': this.insertBlock('> [!CAUTION]\n> 注意内容', 15); break;
-      case 'insert-callout-important': this.insertBlock('> [!IMPORTANT]\n> 重要内容', 17); break;
+      case 'insert-callout-note': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '> [!NOTE]\n> 提示内容' : `> [!NOTE]\n> ${this.t('noteContent')}`, 12);
+        break;
+      }
+      case 'insert-callout-tip': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '> [!TIP]\n> 建议内容' : `> [!TIP]\n> ${this.t('tipContent')}`, 11);
+        break;
+      }
+      case 'insert-callout-warning': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '> [!WARNING]\n> 警告内容' : `> [!WARNING]\n> ${this.t('warningContent')}`, 15);
+        break;
+      }
+      case 'insert-callout-caution': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '> [!CAUTION]\n> 注意内容' : `> [!CAUTION]\n> ${this.t('cautionContent')}`, 15);
+        break;
+      }
+      case 'insert-callout-important': {
+        const isZh = !this.settings || this.settings.language === 'zh';
+        this.insertBlock(isZh ? '> [!IMPORTANT]\n> 重要内容' : `> [!IMPORTANT]\n> ${this.t('importantContent')}`, 17);
+        break;
+      }
 
       case 'insert-ul': this.insertLinePrefix('- '); break;
       case 'insert-ol': this.insertLinePrefix('1. ', true); break;

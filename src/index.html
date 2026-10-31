@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>TizuMark</title>
+  <title>JoeMark</title>
   <link rel="icon" type="image/png" href="app-icon.png">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="lib/codemirror/codemirror.css">
@@ -103,7 +103,7 @@
     <header class="header" data-tauri-drag-region>
       <div class="toolbar" data-tauri-drag-region>
         <div class="toolbar-left">
-          <img id="app-icon" class="app-icon" src="app-icon.png" alt="TizuMark" draggable="false">
+          <img id="app-icon" class="app-icon" src="app-icon.png" alt="JoeMark" draggable="false">
           <div class="dropdown">
             <button id="btn-file" class="toolbar-btn" title="文件">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
@@ -532,7 +532,7 @@
   <div id="about-dialog" class="dialog-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="about-title">
     <div class="dialog">
       <div class="dialog-header dialog-drag-handle">
-        <h2 id="about-title">关于 TizuMark</h2>
+        <h2 id="about-title">About JoeMark</h2>
         <button class="dialog-close" id="about-close" aria-label="关闭">&times;</button>
       </div>
       <div class="dialog-content about-content">
@@ -545,8 +545,8 @@
           </div>
           <div class="dependency-body about-version-body">
             <div class="about-app-line">
-              <span class="about-app-name">TizuMark</span>
-              <span id="about-version" class="about-version-chip">TizuMark v1.2.4</span>
+              <span class="about-app-name">JoeMark</span>
+              <span id="about-version" class="about-version-chip">JoeMark v1.2.4</span>
             </div>
             <p id="about-version-desc" class="about-version-desc">轻量级跨平台 Markdown 编辑器</p>
             <p id="about-build" class="about-build">基于 Tauri v2.5 + Rust 构建</p>
@@ -570,23 +570,23 @@
               <span class="qq-join-text">点击加群</span>
               <span class="qq-arrow">&#10132;</span>
             </div>
-            <div class="gitee-badge" id="gitee-badge" data-url="https://gitee.com/tizu/TizuMark-Markdown-Editor" title="访问 Gitee 仓库">
-              <img class="gitee-icon" src="gitee-icon.png" width="28" height="28" alt="Gitee">
-              <div class="gitee-info">
-                <span class="gitee-label">Gitee</span>
-                <span class="gitee-repo">TizuMark-Markdown-Editor</span>
-              </div>
-              <span class="gitee-action">访问仓库</span>
-              <span class="gitee-arrow">&#10132;</span>
-            </div>
-            <div class="github-badge" id="github-badge" data-url="https://github.com/tizuio/TizuMark-Markdown-Editor" title="访问 GitHub 仓库">
+            <div class="github-badge" id="github-badge" data-url="https://github.com/Jositett/JoeMark" title="Visit JoeMark GitHub Repository">
               <img class="github-icon" src="github-icon.png" width="28" height="28" alt="GitHub">
               <div class="github-info">
-                <span class="github-label">GitHub</span>
-                <span class="github-repo">tizuio/TizuMark-Markdown-Editor</span>
+                <span class="github-label">GitHub (JoeMark Fork)</span>
+                <span class="github-repo">Jositett/JoeMark</span>
               </div>
-              <span class="github-action">访问仓库</span>
+              <span class="github-action">Visit Repository</span>
               <span class="github-arrow">&#10132;</span>
+            </div>
+            <div class="gitee-badge" id="gitee-badge" data-url="https://github.com/tizuio/TizuMark-Markdown-Editor" title="Visit Original TizuMark Upstream Repository">
+              <img class="gitee-icon" src="github-icon.png" width="28" height="28" alt="Upstream">
+              <div class="gitee-info">
+                <span class="gitee-label">Upstream (Original Source)</span>
+                <span class="gitee-repo">tizuio/TizuMark-Markdown-Editor</span>
+              </div>
+              <span class="gitee-action">Original Repo</span>
+              <span class="gitee-arrow">&#10132;</span>
             </div>
             <p class="contact-desc">反馈建议 · 报告 Bug · 交流使用心得 · 获取更新</p>
           </div>
@@ -600,9 +600,9 @@
             <svg class="collapse-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
           </div>
           <div class="dependency-body">
-            <p>Copyright (c) 2024-2026 TizuMark</p>
-            <p>本软件基于 GPL v3 开源协议发布。</p>
-            <p>欢迎自由使用、修改和分发，衍生作品须延续 GPL v3 协议。</p>
+            <p>Copyright (c) 2026 Josiah "Joedroid" Tetteh (@Jositett) · Based on TizuMark (c) 2024-2026</p>
+            <p>Released under the GNU General Public License v3.0 (GPL v3).</p>
+            <p>Original upstream project: https://github.com/tizuio/TizuMark-Markdown-Editor</p>
           </div>
         </div>
 
@@ -671,10 +671,10 @@
       </div>
       <div class="dialog-content">
         <div class="eula-scroll">
-          <h3>TizuMark 开源许可声明</h3>
-          <p>Copyright (c) 2024-2026 TizuMark</p>
+          <h3>JoeMark 开源许可与致谢声明</h3>
+          <p>Copyright (c) 2026 Josiah "Joedroid" Tetteh (@Jositett) · 衍生自开源项目 TizuMark (Copyright (c) 2024-2026 TizuMark)</p>
           <br>
-          <p>TizuMark 是基于 <a href="#" class="gpl-link">GNU General Public License v3.0 (GPL v3)</a> 发布的自由软件。</p>
+          <p>JoeMark 基于 <a href="#" class="gpl-link">GNU General Public License v3.0 (GPL v3)</a> 发布，原项目仓库为 <code>https://github.com/tizuio/TizuMark-Markdown-Editor</code>。</p>
           <br>
           <h4>你可以：</h4>
           <p>自由使用、复制、修改和分发本软件，包括用于商业目的。</p>
@@ -688,10 +688,10 @@
           <h4>第三方组件</h4>
           <p>本软件包含根据各自开源许可证（MIT、BSD-3-Clause、Apache-2.0 等）分发的第三方组件。这些组件的版权和许可条款可在「帮助 → 关于」页面中查看。</p>
           <hr style="margin:24px 0;border:none;border-top:1px solid var(--border-color)">
-          <h3>TizuMark Open Source License Statement</h3>
-          <p>Copyright (c) 2024-2026 TizuMark</p>
+          <h3>JoeMark Open Source License & Attribution Statement</h3>
+          <p>Copyright (c) 2026 Josiah "Joedroid" Tetteh (@Jositett) · Derived from TizuMark (Copyright (c) 2024-2026 TizuMark)</p>
           <br>
-          <p>TizuMark is released under the <a href="#" class="gpl-link">GNU General Public License v3.0 (GPL v3)</a>.</p>
+          <p>JoeMark is released under the <a href="#" class="gpl-link">GNU General Public License v3.0 (GPL v3)</a>. Original upstream source: <code>https://github.com/tizuio/TizuMark-Markdown-Editor</code>.</p>
           <br>
           <h4>You can:</h4>
           <p>Freely use, copy, modify, and distribute this software, including for commercial purposes.</p>
@@ -725,7 +725,7 @@
           <p id="update-state-checking-text">正在检查更新...</p>
         </div>
         <div id="update-state-available" class="hidden">
-          <p>TizuMark <span id="update-new-version" class="update-version-highlight"></span> <span id="update-available-suffix">可用</span></p>
+          <p>JoeMark <span id="update-new-version" class="update-version-highlight"></span> <span id="update-available-suffix">Available</span></p>
           <p class="update-current"><span id="update-current-version-label">当前版本: </span><span id="update-current-version"></span></p>
           <div class="update-notes">
             <h4 id="update-notes-title">更新内容</h4>
@@ -737,7 +737,7 @@
           </div>
         </div>
         <div id="update-state-downloaded" class="hidden">
-          <p>TizuMark <span id="update-dl-version" class="update-version-highlight"></span> <span id="update-dl-suffix">安装包已下载</span></p>
+          <p>JoeMark <span id="update-dl-version" class="update-version-highlight"></span> <span id="update-dl-suffix">installer downloaded</span></p>
           <p class="update-current" id="update-dl-info"></p>
         </div>
         <div id="update-state-latest" class="hidden">
@@ -1018,6 +1018,14 @@
             <label>配色方案</label>
             <div id="set-color-scheme"></div>
           </div>
+          <div class="settings-row">
+            <label>代码高亮主题</label>
+            <div id="set-code-theme"></div>
+          </div>
+          <div class="settings-row">
+            <label>导出主题模式</label>
+            <div id="set-export-theme-mode"></div>
+          </div>
           </div>
         </div>
         <div class="settings-section" data-collapsed="false">
@@ -1075,6 +1083,14 @@
               <svg class="hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" /></svg>
               <span class="hint-text"></span>
             </p>
+          </div>
+          <div class="settings-row">
+            <label>代码块语言标题栏</label>
+            <label class="toggle"><input type="checkbox" id="set-code-header-bar" checked><span class="toggle-slider"></span></label>
+          </div>
+          <div class="settings-row">
+            <label>导出 HTML 交互导览栏</label>
+            <label class="toggle"><input type="checkbox" id="set-export-interactive-html" checked><span class="toggle-slider"></span></label>
           </div>
           <div class="settings-row">
             <label>自定义底色</label>
@@ -1409,7 +1425,7 @@
 
   <div id="loading-overlay" class="loading-overlay">
     <div class="loading-box">
-      <img class="loading-logo" src="app-icon.png" alt="TizuMark">
+      <img class="loading-logo" src="app-icon.png" alt="JoeMark">
       <div class="loading-progress-track">
         <div id="loading-progress-fill" class="loading-progress-fill"></div>
       </div>

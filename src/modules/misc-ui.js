@@ -240,7 +240,8 @@
         }
         const hint = document.createElement('div');
         hint.className = 'lightbox-hint';
-        hint.innerHTML = '<span>🖱 滚轮缩放 · 拖动平移 · 双击重置 · Esc 关闭</span><span class="lightbox-hint-close">&times;</span>';
+        const hintText = (typeof this.t === 'function' && this.t('lightboxHint')) || '🖱 Scroll to zoom · Drag to pan · Double-click to reset · Esc to close';
+        hint.innerHTML = `<span>${hintText}</span><span class="lightbox-hint-close">&times;</span>`;
         hint.querySelector('.lightbox-hint-close').addEventListener('click', () => hint.remove());
         overlay.appendChild(hint);
         overlay.appendChild(el);

@@ -1608,7 +1608,7 @@
         if (codeFont) node.style.setProperty('--font-code-preview', codeFont);
         // 代码块行号/换行/滚动条的显示由 #preview 上的类控制（CSS 作用域 .preview-content.xxx），
         // 遮罩同带 preview-content 类，需同步同类才吃到同样式
-        for (const cls of ['code-line-numbers', 'code-wrap', 'code-no-scroll']) {
+        for (const cls of ['code-line-numbers', 'code-wrap', 'code-no-scroll', 'code-header-bar']) {
           node.classList.toggle(cls, this.preview.classList.contains(cls));
         }
       } catch (_) { /* 排版同步失败不阻断遮罩 */ }
@@ -2395,8 +2395,10 @@
         wrap.appendChild(b);
         return b;
       };
-      const colBtn = mkBtn('wysiwyg-table-add-col', '添加列');
-      const rowBtn = mkBtn('wysiwyg-table-add-row', '添加行');
+      const colTitle = (this.editor && typeof this.editor.t === 'function') ? this.editor.t('tableAddCol') : 'Add Column';
+      const rowTitle = (this.editor && typeof this.editor.t === 'function') ? this.editor.t('tableAddRow') : 'Add Row';
+      const colBtn = mkBtn('wysiwyg-table-add-col', colTitle);
+      const rowBtn = mkBtn('wysiwyg-table-add-row', rowTitle);
       // 行/列拖拽「轨道 + 握点」（2026-10-13 用户参考图 2/3/6，边缘邻近触发）：
       // 必须是 wrap 上的真实元素（不能是 td/th 伪元素——table 盒只有网格宽且是滚动容器，
       // 伸到表盒外会被裁剪：不可见/不可命中，2026-10-13 实测 elementFromPoint=PRE）。

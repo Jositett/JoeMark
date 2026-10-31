@@ -1247,11 +1247,95 @@
           }
         });
       },
+      // Extract a clean filename base from the first Markdown heading (or YAML title / first line),
+      // similar to Markdown Monster's untitled file naming behavior.
+      extractHeadingBaseName(tab) {
+        const target = tab || this.activeTab;
+        if (!target) return '';
+        if (target.filePath) {
+          return this.baseName(target.filePath).replace(/\.[^.]+$/, '');
+        }
+        const raw = (target === this.activeTab && this.cm && typeof this.cm.getValue === 'function')
+          ? (this.cm.getValue() || target.content || '')
+          : (target.content || '');
+        if (!raw || !raw.trim()) return '';
+
+        const sanitize = (str) => {
+          let s = String(str || '')
+            .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+            .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+            .replace(/<[^>]+>/g, '')
+            .replace(/(\*\*|__|\*|_|~~|`)/g, '')
+            .replace(/[\/#\*\?:"<>|\\\x00-\x1f]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .replace(/^[.\s]+|[.\s]+$/g, '');
+          if (s.length > 80) s = s.slice(0, 80).trim().replace(/[.\s]+$/g, '');
+          return s;
+        };
+
+        let body = raw.replace(/^\uFEFF/, '');
+        // 1) Check YAML frontmatter title:
+        const fmMatch = body.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+        if (fmMatch) {
+          const titleLine = fmMatch[1].match(/^\s*title\s*:\s*(.+)\s*$/m);
+          if (titleLine) {
+            const fmTitle = sanitize(titleLine[1].replace(/^['"]|['"]$/g, ''));
+            if (fmTitle) return fmTitle;
+          }
+          body = body.slice(fmMatch[0].length);
+        }
+
+        // Strip fenced code blocks before searching headings
+        const withoutFences = body.replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1\s*$/gm, '');
+        const lines = withoutFences.split(/\r?\n/);
+
+        // 2) First ATX heading (# Heading) or Setext heading (Heading \n === or ---)
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          const atx = line.match(/^#{1,6}\s+(.+?)\s*#*\s*$/);
+          if (atx) {
+            const candidate = sanitize(atx[1]);
+            if (candidate) return candidate;
+          }
+          if (i + 1 < lines.length && /^(?:=+|-+)\s*$/.test(lines[i + 1].trim()) && !/^[>#\-*+|]/.test(line)) {
+            const candidate = sanitize(line);
+            if (candidate) return candidate;
+          }
+        }
+
+        // 3) Fallback: first non-empty prose line
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line || /^---+$/.test(line) || /^\[TOC\]$/i.test(line)) continue;
+          const cleaned = sanitize(line.replace(/^(?:>\s*|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+\.\s+)/, ''));
+          if (cleaned) return cleaned;
+        }
+        return '';
+      },
+      suggestSaveDefaultPath(tab, ext = '.md') {
+        const target = tab || this.activeTab;
+        const normalizedExt = ext.startsWith('.') ? ext : ('.' + ext);
+        if (target && target.filePath) {
+          if (normalizedExt === '.md') return target.filePath;
+          return target.filePath.replace(/\.[^./\\]+$/, normalizedExt);
+        }
+        const headingBase = this.extractHeadingBaseName(target);
+        const fallbackBase = String((target && target.name) || this.t('untitled') || 'Untitled').replace(/\.[^.]+$/, '');
+        const base = headingBase || fallbackBase || 'Untitled';
+        const fileName = base.toLowerCase().endsWith(normalizedExt.toLowerCase()) ? base : (base + normalizedExt);
+        if (this.workspaceFolder) {
+          return this.joinPath(this.workspaceFolder, fileName);
+        }
+        return fileName;
+      },
       async saveFile() {
         try {
           let path = this.activeTab.filePath;
           if (!path) {
             path = await dialogSave({
+              defaultPath: this.suggestSaveDefaultPath(this.activeTab, '.md'),
               filters: [
                 { name: 'Markdown', extensions: ['md'] },
                 { name: this.t('allFiles'), extensions: ['*'] }
@@ -1277,7 +1361,7 @@
       async saveAsFile() {
         try {
           const path = await dialogSave({
-            defaultPath: this.activeTab.filePath || `${this.activeTab.name}`,
+            defaultPath: this.suggestSaveDefaultPath(this.activeTab, '.md'),
             filters: [
               { name: 'Markdown', extensions: ['md'] },
               { name: this.t('allFiles'), extensions: ['*'] }
@@ -1369,6 +1453,7 @@
           try {
             if (!tab.filePath) {
               const path = await dialogSave({
+                defaultPath: this.suggestSaveDefaultPath(tab, '.md'),
                 filters: [
                   { name: 'Markdown', extensions: ['md'] },
                   { name: this.t('allFiles'), extensions: ['*'] }

@@ -125,6 +125,9 @@
             try {
               if (!tab.filePath) {
                 const path = await dialogSave({
+                  defaultPath: (typeof this.suggestSaveDefaultPath === 'function')
+                    ? this.suggestSaveDefaultPath(tab, '.md')
+                    : (tab.name || 'Untitled.md'),
                   filters: [
                     { name: 'Markdown', extensions: ['md'] },
                     { name: this.t('allFiles'), extensions: ['*'] }

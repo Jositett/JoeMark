@@ -111,6 +111,8 @@
         setRowLabel('set-language', t('language'));
         setRowLabel('set-theme-mode', t('themeMode'));
         setRowLabel('set-color-scheme', t('colorScheme'));
+        setRowLabel('set-code-theme', t('codeTheme'));
+        setRowLabel('set-export-theme-mode', t('exportThemeMode'));
         setRowLabel('set-font-size', t('fontSize'));
         setRowLabel('set-tab-size', t('tabSize'));
         setRowLabel('set-line-wrap', t('lineWrap'));
@@ -130,6 +132,8 @@
         setRowLabel('set-code-line-numbers', t('codeLineNumbers'));
         setRowLabel('set-code-wrap', t('codeBlockWrap'));
         setRowLabel('set-code-scroll', t('codeScroll'));
+        setRowLabel('set-code-header-bar', t('codeHeaderBar'));
+        setRowLabel('set-export-interactive-html', t('exportInteractiveHtml'));
         setRowLabel('set-custom-bg', t('customBg'));
         setRowLabel('set-close-action', t('closeAction'));
         setRowLabel('set-clear-tabs-on-quit', t('clearTabsOnQuit'));
@@ -339,7 +343,7 @@
           const title = aboutSections[3].querySelector('.dependency-title .dependency-name');
           if (title) title.textContent = t('thirdParty');
           const depDescs = aboutSections[3].querySelectorAll('.dependency-item p');
-          const depKeys = ['depCodeMirror', 'depHighlight', 'depCmark', 'depKatex', 'depMermaid', 'depHtml2canvas', 'depTauri'];
+          const depKeys = ['depCodeMirror', 'depHighlight', 'depMarkdownIt', 'depUnified', 'depKatex', 'depMermaid', 'depHtml2canvas', 'depTauri'];
           depDescs.forEach((p, i) => {
             if (i < depKeys.length) p.textContent = t(depKeys[i]);
           });
@@ -451,12 +455,18 @@
           }
         });
   
-        // ====== data-i18n (category labels without actions, e.g. toolbar dropdowns) ======
+        // ====== data-i18n (category labels, sidebar panel titles, hints) ======
         document.querySelectorAll('[data-i18n]').forEach(el => {
           const key = el.dataset.i18n;
           if (key) {
-            const lbl = el.querySelector('.lbl');
-            if (lbl) lbl.textContent = t(key);
+            const val = t(key);
+            const lbl = el.querySelector('.lbl') || el.querySelector('.hint-text');
+            if (lbl) {
+              lbl.textContent = val;
+              if (el.hasAttribute('title')) el.title = val;
+            } else if (el.children.length === 0) {
+              el.textContent = val;
+            }
           }
         });
   
@@ -503,6 +513,14 @@
           // 注意：'folder-open-containing' 文案由 updateFolderMenuLabel() 按 _folderCtxIsDir 动态切换
           // （文件夹→openFolder / 文件→openContainingFolder），不走这里的静态映射。
           'folder-copy-path': 'copyFilePath',
+          'file-new-file': 'fileNewFile',
+          'file-new-folder': 'fileNewFolder',
+          'file-cut': 'cut',
+          'file-copy': 'copy',
+          'file-paste': 'paste',
+          'file-rename': 'fileRename',
+          'file-copy-path': 'fileCopyPath',
+          'file-delete': 'fileDelete',
         };
         document.querySelectorAll('.context-menu-item[data-action]').forEach(el => {
           const key = ctxActionKeys[el.dataset.action];
@@ -516,6 +534,8 @@
         // 自绘下拉：随语言刷新选项文案（替代原生 select，展开面板可主题化 + 完整 ARIA）
         if (this._selects && this._selects.themeMode) this._selects.themeMode.applyI18n(t);
         if (this._selects && this._selects.colorScheme) this._selects.colorScheme.applyI18n(t);
+        if (this._selects && this._selects.codeTheme) this._selects.codeTheme.applyI18n(t);
+        if (this._selects && this._selects.exportThemeMode) this._selects.exportThemeMode.applyI18n(t);
         if (this._selects && this._selects.language) this._selects.language.applyI18n(t);
         if (this._selects && this._selects.tabSize) this._selects.tabSize.applyI18n(t);
         if (this._selects && this._selects.lineHeight) this._selects.lineHeight.applyI18n(t);
@@ -529,6 +549,35 @@
         if (this._imageSourceSelect) this._imageSourceSelect.applyI18n(t);
         if (this._folderSortSelect) this._folderSortSelect.applyI18n(t);
         if (this._outlineFilterSelect) this._outlineFilterSelect.applyI18n(t);
+        // File search dialog (Ctrl+P), DOCX export confirm dialog, Prompt dialog
+        setText('file-search-title', t('fileSearchTitle'));
+        setPlaceholder('file-search-input', t('fileSearchPlaceholder'));
+        setText('docx-page-title', t('exportWord'));
+        document.querySelectorAll('#docx-page-dialog .dialog-footer .docx-page-cancel').forEach(btn => {
+          btn.textContent = t('cancel');
+        });
+        const docxOk = document.querySelector('#docx-page-dialog .docx-page-ok');
+        if (docxOk) docxOk.textContent = t('exportBtn');
+        setText('prompt-dialog-title', t('promptInputTitle'));
+        setText('prompt-dialog-cancel', t('cancel'));
+        setText('prompt-dialog-confirm', t('confirm'));
+        setTitle('sidebar-h-resizer', t('sidebarResizerTitle'));
+        setText('large-file-banner-dont-remind', t('dontRemind'));
+        setText('large-file-banner-close', t('close'));
+
+        // Font preview sample text
+        const fpEditor = document.querySelector('#font-preview-editor .font-preview-text');
+        if (fpEditor) fpEditor.textContent = t('fontSampleEditor');
+        const fpPreview = document.querySelector('#font-preview-preview .font-preview-text');
+        if (fpPreview) fpPreview.textContent = t('fontSamplePreview');
+        const fpCode = document.querySelector('#font-preview-code .font-preview-text');
+        if (fpCode) fpCode.textContent = t('fontSampleCode');
+
+        // Refresh sidebar chevron / expand-all button tooltips
+        if (typeof this.applyPanelCollapse === 'function') this.applyPanelCollapse();
+        if (typeof this._updateAllFoldersBtn === 'function') this._updateAllFoldersBtn();
+        if (typeof this._updateAllOutlineBtn === 'function') this._updateAllOutlineBtn();
+
         // 自定义字体区（空状态 + 编辑/预览字体下拉的「跟随方案」）随语言刷新
         this.renderCustomFontSettings();
       },

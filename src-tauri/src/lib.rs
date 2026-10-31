@@ -251,11 +251,11 @@ impl Default for WindowBehavior {
 struct TrayState(Mutex<Option<TrayIcon>>);
 
 fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
-    let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let show = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
     TrayIconBuilder::new()
-        .tooltip("TizuMark")
+        .tooltip("JoeMark")
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
         .on_menu_event(|app, event| {
@@ -1530,6 +1530,7 @@ struct PdfPrintOptions {
     margin_bottom: f64,
     margin_left: f64,
     margin_right: f64,
+    background_color: Option<[u8; 3]>,
 }
 
 // PDF 导出：直接用 WebView2 的 PrintToPdf 落盘，不经过系统打印对话框、也不经过浏览器下载流程。
@@ -1594,8 +1595,9 @@ async fn print_to_pdf(
                 let mut orig_bg = COREWEBVIEW2_COLOR { A: 255, R: 245, G: 245, B: 245 };
                 if let Some(c2) = controller2.clone() {
                     let _ = c2.DefaultBackgroundColor(&mut orig_bg);
+                    let [r, g, b] = opts.background_color.unwrap_or([255, 255, 255]);
                     let _ = c2.SetDefaultBackgroundColor(COREWEBVIEW2_COLOR {
-                        A: 255, R: 255, G: 255, B: 255,
+                        A: 255, R: r, G: g, B: b,
                     });
                 }
                 let core7 = match core.cast::<ICoreWebView2_7>() {

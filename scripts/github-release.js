@@ -12,8 +12,8 @@ const { VERSION, notesLines, writeNotes } = require('./release-notes.js');
 writeNotes();
 
 const TOKEN = process.env.GITHUB_TOKEN;
-const OWNER = 'tizuio';
-const REPO = 'TizuMark-Markdown-Editor';
+const OWNER = 'Jositett';
+const REPO = 'JoeMark';
 
 if (!TOKEN) { console.error('GITHUB_TOKEN 未设置'); process.exit(1); }
 
